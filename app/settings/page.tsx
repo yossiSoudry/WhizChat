@@ -57,6 +57,43 @@ const DAYS = [
   { key: "saturday", label: "שבת" },
 ];
 
+const DEFAULT_SETTINGS: Settings = {
+  business_hours: {
+    timezone: "Asia/Jerusalem",
+    schedule: {
+      sunday: { start: "09:00", end: "18:00" },
+      monday: { start: "09:00", end: "18:00" },
+      tuesday: { start: "09:00", end: "18:00" },
+      wednesday: { start: "09:00", end: "18:00" },
+      thursday: { start: "09:00", end: "18:00" },
+      friday: null,
+      saturday: null,
+    },
+  },
+  messages: {
+    welcome: "היי! 👋 איך אפשר לעזור?",
+    offline: "אנחנו כרגע לא זמינים. השאר הודעה ונחזור אליך בהקדם!",
+    ask_contact: "האם תרצה שנחזור אליך באימייל או בוואטסאפ?",
+    transferred_to_whatsapp: "מעולה! ממשיכים את השיחה בוואטסאפ...",
+    going_offline: "צוות התמיכה סיים את המשמרת. נחזור אליך בהקדם!",
+    agent_joined: "אתה משוחח עכשיו עם {agent_name}",
+  },
+  widget: {
+    position: "right",
+    primaryColor: "#A31CAF",
+    secondaryColor: "#39C3EF",
+  },
+  whatsapp: {
+    businessPhone: "",
+    instanceId: "",
+    apiToken: "",
+  },
+  archive: {
+    daysUntilArchive: 30,
+    autoArchiveEnabled: true,
+  },
+};
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,9 +107,18 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/admin/settings");
       const data = await res.json();
-      setSettings(data.settings);
+      // Merge with defaults to handle missing fields
+      const mergedSettings = {
+        business_hours: { ...DEFAULT_SETTINGS.business_hours, ...data.settings?.business_hours },
+        messages: { ...DEFAULT_SETTINGS.messages, ...data.settings?.messages },
+        widget: { ...DEFAULT_SETTINGS.widget, ...data.settings?.widget },
+        whatsapp: { ...DEFAULT_SETTINGS.whatsapp, ...data.settings?.whatsapp },
+        archive: { ...DEFAULT_SETTINGS.archive, ...data.settings?.archive },
+      };
+      setSettings(mergedSettings);
     } catch (error) {
       console.error("Failed to fetch settings:", error);
+      setSettings(DEFAULT_SETTINGS);
     } finally {
       setIsLoading(false);
     }
@@ -83,11 +129,35 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     try {
-      await fetch("/api/admin/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
+      // Save each setting separately
+      const savePromises = [
+        fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "business_hours", value: settings.business_hours }),
+        }),
+        fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "messages", value: settings.messages }),
+        }),
+        fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "widget", value: settings.widget }),
+        }),
+        fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "whatsapp", value: settings.whatsapp }),
+        }),
+        fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: "archive", value: settings.archive }),
+        }),
+      ];
+      await Promise.all(savePromises);
     } catch (error) {
       console.error("Failed to save settings:", error);
     } finally {

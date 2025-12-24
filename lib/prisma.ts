@@ -1,18 +1,28 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaNeon } from "@prisma/adapter-neon";
-import { Pool } from "@neondatabase/serverless";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+
+// Disable TLS certificate verification for development
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL || '';
+  const connectionString = process.env.DATABASE_URL;
 
-  // Create a Neon pool
-  const pool = new Pool({ connectionString });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaNeon(pool as any);
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  // Create a pg pool
+  const pool = new Pool({
+    connectionString,
+    ssl: true,
+  });
+
+  const adapter = new PrismaPg(pool);
 
   return new PrismaClient({
     adapter,
