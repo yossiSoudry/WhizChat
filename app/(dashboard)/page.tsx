@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { ConversationList } from "@/components/dashboard/conversation-list";
 import { ChatView } from "@/components/dashboard/chat-view";
-import { Sidebar } from "@/components/dashboard/sidebar";
 
 interface Conversation {
   id: string;
@@ -19,7 +18,7 @@ interface Conversation {
   createdAt: string;
 }
 
-export default function DashboardPage() {
+export default function ConversationsPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,35 +40,32 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background" dir="rtl">
-      <Sidebar />
-      <div className="flex flex-1 h-full">
-        {/* Conversations List */}
-        <div className="w-80 border-l flex flex-col bg-card">
-          <div className="p-4 border-b">
-            <h1 className="text-lg font-semibold">שיחות</h1>
-          </div>
-          <ConversationList
-            conversations={conversations}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            isLoading={isLoading}
-          />
+    <div className="flex h-full">
+      {/* Conversations List */}
+      <div className="w-80 border-l flex flex-col bg-card">
+        <div className="p-4 border-b">
+          <h1 className="text-lg font-semibold">שיחות</h1>
         </div>
+        <ConversationList
+          conversations={conversations}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          isLoading={isLoading}
+        />
+      </div>
 
-        {/* Chat View */}
-        <div className="flex-1">
-          {selectedId ? (
-            <ChatView
-              conversationId={selectedId}
-              onClose={() => setSelectedId(null)}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              בחר שיחה מהרשימה
-            </div>
-          )}
-        </div>
+      {/* Chat View */}
+      <div className="flex-1">
+        {selectedId ? (
+          <ChatView
+            conversationId={selectedId}
+            onClose={() => setSelectedId(null)}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            בחר שיחה מהרשימה
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npx prisma init:*)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx tsx:*)",
+      "Bash(set NODE_TLS_REJECT_UNAUTHORIZED=0)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(Remove-Item -Force -Recurse \"C:\\Users\\ASUS\\Desktop\\whizchat\\.next\\dev\\lock\" -ErrorAction SilentlyContinue)",
+      "Bash(npm run build:*)",
+      "Bash(npm ls:*)"
+    ]
+  }
+}

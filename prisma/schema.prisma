@@ -1,0 +1,231 @@
+// WhizChat - Prisma Schema
+// Using db push (no migrations)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum ConversationStatus {
+  active
+  closed
+  pending
+}
+
+enum ContactType {
+  email
+  whatsapp
+  none
+}
+
+enum SenderType {
+  customer
+  agent
+  system
+  bot
+}
+
+enum MessageSource {
+  widget
+  dashboard
+  whatsapp
+}
+
+enum WAMessageStatus {
+  sent
+  delivered
+  read
+  failed
+}
+
+enum AgentRole {
+  admin
+  agent
+}
+
+enum UserType {
+  customer
+  agent
+}
+
+// ============================================
+// TABLES
+// ============================================
+
+model Conversation {
+  id String @id @default(uuid())
+
+  // WordPress User (if logged in)
+  wpUserId    Int?    @map("wp_user_id")
+  wpUserEmail String? @map("wp_user_email")
+  wpUserName  String? @map("wp_user_name")
+
+  // Anonymous User (Supabase Anonymous Auth user ID)
+  anonUserId String? @unique @map("anon_user_id")
+
+  // Guest contact info (collected during chat)
+  guestName    String?     @map("guest_name")
+  guestContact String?     @map("guest_contact")
+  contactType  ContactType @default(none) @map("contact_type")
+
+  // Conversation State
+  status     ConversationStatus @default(active)
+  isArchived Boolean            @default(false) @map("is_archived")
+
+  // WhatsApp Integration
+  waChatId         String?  @map("wa_chat_id")
+  waPhone          String?  @map("wa_phone")
+  movedToWhatsapp  Boolean  @default(false) @map("moved_to_whatsapp")
+
+  // Metadata
+  lastMessageAt      DateTime? @map("last_message_at")
+  lastMessagePreview String?   @map("last_message_preview")
+  unreadCount        Int       @default(0) @map("unread_count")
+
+  // Read Receipts
+  lastReadAtCustomer DateTime? @map("last_read_at_customer")
+  lastReadAtAgent    DateTime? @map("last_read_at_agent")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  messages          Message[]
+  typingIndicators  TypingIndicator[]
+
+  // Indexes
+  @@unique([wpUserId])
+  @@index([status, isArchived])
+  @@index([lastMessageAt(sort: Desc)])
+  @@index([isArchived, status])
+  @@map("conversations")
+}
+
+model Message {
+  id             String @id @default(uuid())
+  conversationId String @map("conversation_id")
+
+  // Client-side nonce for deduplication
+  clientMessageId String? @map("client_message_id")
+
+  // Content
+  content String
+
+  // Sender Info
+  senderType SenderType    @map("sender_type")
+  senderId   String?       @map("sender_id")
+  senderName String?       @map("sender_name")
+
+  // Source
+  source MessageSource
+
+  // WhatsApp specific
+  waMessageId String?         @map("wa_message_id")
+  waStatus    WAMessageStatus? @map("wa_status")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@unique([conversationId, clientMessageId])
+  @@index([conversationId])
+  @@index([createdAt(sort: Desc)])
+  @@index([waMessageId])
+  @@map("messages")
+}
+
+model Agent {
+  id String @id @default(uuid())
+
+  // Auth (linked to Supabase Auth)
+  authUserId String @unique @map("auth_user_id")
+
+  // Profile
+  email     String  @unique
+  name      String
+  avatarUrl String? @map("avatar_url")
+
+  // Role & Status
+  role       AgentRole @default(agent)
+  isActive   Boolean   @default(true) @map("is_active")
+  isOnline   Boolean   @default(false) @map("is_online")
+  lastSeenAt DateTime? @map("last_seen_at")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("agents")
+}
+
+model FAQItem {
+  id String @id @default(uuid())
+
+  question String
+  answer   String
+
+  // Display
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  // Analytics
+  clickCount Int @default(0) @map("click_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("faq_items")
+}
+
+model QuickReply {
+  id String @id @default(uuid())
+
+  title    String
+  content  String
+  shortcut String? // e.g., "/pricing"
+
+  // Display
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("quick_replies")
+}
+
+model TypingIndicator {
+  conversationId String   @map("conversation_id")
+  userId         String   @map("user_id")
+  userType       UserType @map("user_type")
+  isTyping       Boolean  @default(false) @map("is_typing")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@map("typing_indicators")
+}
+
+model Setting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value Json
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
