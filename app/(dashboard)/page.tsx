@@ -53,8 +53,12 @@ export default function ConversationsPage() {
   const checkScrollButtons = useCallback(() => {
     if (filtersRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = filtersRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+      // In RTL, scrollLeft is negative (starts at 0, goes negative as you scroll left)
+      // canScrollRight = can scroll towards the end (more negative values in RTL)
+      // canScrollLeft = can scroll towards the start (back to 0 in RTL)
+      const maxScroll = scrollWidth - clientWidth;
+      setCanScrollLeft(Math.abs(scrollLeft) < maxScroll - 1);
+      setCanScrollRight(scrollLeft < 0);
     }
   }, []);
 
@@ -137,18 +141,18 @@ export default function ConversationsPage() {
             </div>
           </div>
           {/* Filter tabs with horizontal scroll */}
-          <div className="flex items-center pt-3 pb-2 px-1">
-            {/* Right scroll arrow */}
+          <div className="flex items-center pt-5 pb-2 px-1">
+            {/* Right arrow - scrolls to show more content on the right (in RTL: towards start) */}
             <button
               onClick={() => {
                 if (filtersRef.current) {
-                  filtersRef.current.scrollLeft -= 100;
+                  filtersRef.current.scrollBy({ left: 100, behavior: "smooth" });
                   setTimeout(checkScrollButtons, 300);
                 }
               }}
               className={cn(
                 "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
-                canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
+                canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
             >
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -158,7 +162,7 @@ export default function ConversationsPage() {
             <div
               ref={filtersRef}
               onScroll={checkScrollButtons}
-              className="flex-1 flex items-center gap-1.5 px-1 overflow-x-auto"
+              className="flex-1 flex items-center gap-1.5 px-1 pt-2 overflow-x-auto scroll-smooth"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
             >
               <AnimateIcon animateOnHover asChild>
@@ -234,17 +238,17 @@ export default function ConversationsPage() {
               </AnimateIcon>
             </div>
 
-            {/* Left scroll arrow */}
+            {/* Left arrow - scrolls to show more content on the left (in RTL: towards end) */}
             <button
               onClick={() => {
                 if (filtersRef.current) {
-                  filtersRef.current.scrollLeft += 100;
+                  filtersRef.current.scrollBy({ left: -100, behavior: "smooth" });
                   setTimeout(checkScrollButtons, 300);
                 }
               }}
               className={cn(
                 "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
-                canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
+                canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
             >
               <ChevronLeft className="w-4 h-4 text-muted-foreground" />
