@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { chatInitSchema } from "@/lib/validations/chat";
-import { isWithinBusinessHours } from "@/lib/business-hours";
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,8 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get settings
-    const [businessHoursSettings, messagesSettings, widgetSettings] = await Promise.all([
-      prisma.setting.findUnique({ where: { key: "business_hours" } }),
+    const [messagesSettings, widgetSettings] = await Promise.all([
       prisma.setting.findUnique({ where: { key: "messages" } }),
       prisma.setting.findUnique({ where: { key: "widget" } }),
     ]);
@@ -65,13 +63,20 @@ export async function POST(request: NextRequest) {
       orderBy: { displayOrder: "asc" },
     });
 
-    // Check if online
-    const businessHours = businessHoursSettings?.value as {
-      timezone: string;
-      schedule: Record<string, { start: string; end: string } | null>;
-    } | null;
+    // Check if any agent is online (connected in the last 60 seconds)
+    const onlineThreshold = new Date(Date.now() - 60 * 1000);
+    const onlineAgent = await prisma.agent.findFirst({
+      where: {
+        isActive: true,
+        isOnline: true,
+        lastSeenAt: {
+          gte: onlineThreshold,
+        },
+      },
+      select: { id: true },
+    });
 
-    const isOnline = businessHours ? isWithinBusinessHours(businessHours) : true;
+    const isOnline = !!onlineAgent;
 
     const messages = messagesSettings?.value as {
       welcome: string;

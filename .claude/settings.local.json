@@ -12,7 +12,12 @@
       "Bash(taskkill:*)",
       "Bash(Remove-Item -Force -Recurse \"C:\\Users\\ASUS\\Desktop\\whizchat\\.next\\dev\\lock\" -ErrorAction SilentlyContinue)",
       "Bash(npm run build:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)"
     ]
   }
 }

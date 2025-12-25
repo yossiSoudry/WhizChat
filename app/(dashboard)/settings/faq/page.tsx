@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
 import {
   Card,
   CardContent,
@@ -158,20 +157,15 @@ export default function FAQPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background" dir="rtl">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background" dir="rtl">
-      <Sidebar />
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+    <div className="h-full overflow-auto p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">שאלות נפוצות</h1>
@@ -350,7 +344,6 @@ export default function FAQPage() {
               ))
             )}
           </div>
-        </div>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/dashboard/sidebar";
 import {
   Card,
   CardContent,
@@ -194,31 +193,23 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background" dir="rtl">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-        </div>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   if (!settings) {
     return (
-      <div className="flex h-screen bg-background" dir="rtl">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          לא ניתן לטעון את ההגדרות
-        </div>
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        לא ניתן לטעון את ההגדרות
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background" dir="rtl">
-      <Sidebar />
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+    <div className="h-full overflow-auto p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">הגדרות</h1>
             <Button onClick={handleSave} disabled={isSaving}>
@@ -551,7 +542,6 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
       </div>
     </div>
   );

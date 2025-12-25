@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { sendAgentMessageSchema } from "@/lib/validations/admin";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validatedData = sendAgentMessageSchema.parse(body);
+    const { conversationId, content, agentId } = body;
 
-    const { conversationId, content, agentId } = validatedData;
+    if (!conversationId || !content) {
+      return NextResponse.json(
+        { error: "conversationId and content are required" },
+        { status: 400 }
+      );
+    }
 
     // Verify conversation exists
     const conversation = await prisma.conversation.findUnique({
@@ -21,16 +25,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify agent exists
-    const agent = await prisma.agent.findUnique({
-      where: { id: agentId },
-    });
+    // Try to find agent, but allow sending without one (dev mode)
+    let agentName = "נציג WhizChat";
+    let senderId = agentId;
 
-    if (!agent || !agent.isActive) {
-      return NextResponse.json(
-        { error: "Agent not found or inactive" },
-        { status: 404 }
-      );
+    if (agentId && agentId !== "temp-agent-id") {
+      const agent = await prisma.agent.findUnique({
+        where: { id: agentId },
+      });
+      if (agent && agent.isActive) {
+        agentName = agent.name;
+        senderId = agent.id;
+      }
     }
 
     // Create message
@@ -39,8 +45,8 @@ export async function POST(request: NextRequest) {
         conversationId,
         content,
         senderType: "agent",
-        senderId: agentId,
-        senderName: agent.name,
+        senderId,
+        senderName: agentName,
         source: "dashboard",
       },
     });
@@ -67,14 +73,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Send agent message error:", error);
-
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Invalid request data" },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(
       { error: "Failed to send message" },
       { status: 500 }

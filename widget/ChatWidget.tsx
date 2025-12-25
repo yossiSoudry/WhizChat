@@ -22,6 +22,24 @@ function formatTime(dateString: string): string {
   });
 }
 
+// Message status icons
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function DoubleCheckIcon({ read = false }: { read?: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={read ? "#3B82F6" : "currentColor"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="18 6 9 17 4 12" />
+      <polyline points="22 6 13 17" />
+    </svg>
+  );
+}
+
 export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -36,12 +54,16 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   const [contactType, setContactType] = useState<"email" | "whatsapp" | null>(null);
   const [contactValue, setContactValue] = useState("");
   const [userName, setUserName] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [agentIsTyping, setAgentIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     position = "right",
-    primaryColor = "#A31CAF",
-    secondaryColor = "#39C3EF",
+    primaryColor = "#C026D3",
+    secondaryColor = "#A21CAF",
     wpUserId,
     wpUserEmail,
     wpUserName,
@@ -55,6 +77,13 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isOpen]);
 
   // Initialize chat
   const initChat = useCallback(async () => {
@@ -92,6 +121,135 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }, [isOpen, conversationId, initChat]);
 
+  // Poll for new messages
+  const fetchNewMessages = useCallback(async () => {
+    if (!conversationId || !isOpen) return;
+
+    try {
+      const lastMessage = messages[messages.length - 1];
+      const afterParam = lastMessage ? `&after=${lastMessage.id}` : "";
+      const res = await fetch(
+        `${apiUrl}/api/chat/messages?conversationId=${conversationId}${afterParam}`
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newMessages = data.messages.filter(
+              (m: Message) => !existingIds.has(m.id)
+            );
+            return [...prev, ...newMessages];
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+    }
+  }, [apiUrl, conversationId, isOpen, messages]);
+
+  // Polling interval for messages
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    const interval = setInterval(fetchNewMessages, 3000);
+    return () => clearInterval(interval);
+  }, [isOpen, conversationId, fetchNewMessages]);
+
+  // Check if agent is typing
+  const checkAgentTyping = useCallback(async () => {
+    if (!conversationId || !isOpen) return;
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/chat/typing?conversationId=${conversationId}&userType=customer`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAgentIsTyping(data.isTyping);
+      }
+    } catch (error) {
+      // Silent fail for typing status
+    }
+  }, [apiUrl, conversationId, isOpen]);
+
+  // Poll for agent typing status
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    const interval = setInterval(checkAgentTyping, 2000);
+    return () => clearInterval(interval);
+  }, [isOpen, conversationId, checkAgentTyping]);
+
+  // Send customer presence heartbeat
+  const sendPresenceHeartbeat = useCallback(async () => {
+    if (!conversationId || !isOpen) return;
+
+    try {
+      await fetch(`${apiUrl}/api/chat/presence`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      });
+    } catch (error) {
+      // Silent fail for presence
+    }
+  }, [apiUrl, conversationId, isOpen]);
+
+  // Customer presence heartbeat - every 30 seconds when widget is open
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    // Send immediately when opening
+    sendPresenceHeartbeat();
+
+    const interval = setInterval(sendPresenceHeartbeat, 30000);
+    return () => clearInterval(interval);
+  }, [isOpen, conversationId, sendPresenceHeartbeat]);
+
+  // Send typing status
+  const sendTypingStatus = useCallback(async (typing: boolean) => {
+    if (!conversationId) return;
+
+    try {
+      await fetch(`${apiUrl}/api/chat/typing`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          isTyping: typing,
+          userType: "customer",
+          userId: "widget-user",
+        }),
+      });
+    } catch (error) {
+      // Silent fail for typing status
+    }
+  }, [apiUrl, conversationId]);
+
+  // Handle input change with typing indicator
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    if (value.trim()) {
+      // Send typing = true
+      sendTypingStatus(true);
+
+      // Set timeout to send typing = false after 2 seconds of no typing
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStatus(false);
+      }, 2000);
+    } else {
+      sendTypingStatus(false);
+    }
+  };
+
   // Send message
   async function sendMessage(content: string) {
     if (!content.trim() || !conversationId || isSending) return;
@@ -106,10 +264,10 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistic update
     setMessages((prev) => [...prev, tempMessage]);
     setInputValue("");
     setIsSending(true);
+    sendTypingStatus(false); // Stop typing indicator when sending
 
     try {
       const res = await fetch(`${apiUrl}/api/chat/send`, {
@@ -126,7 +284,6 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
       if (res.ok) {
         const data = await res.json();
-        // Replace temp message with real one
         setMessages((prev) =>
           prev.map((m) => (m.id === clientMessageId ? data.message : m))
         );
@@ -140,11 +297,11 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
   // Handle FAQ click
   async function handleFAQClick(item: FAQItem) {
-    // Add question as customer message
     await sendMessage(item.question);
+    setIsTyping(true);
 
-    // Add answer as bot message after a short delay
     setTimeout(() => {
+      setIsTyping(false);
       const botMessage: Message = {
         id: generateId(),
         content: item.answer,
@@ -154,7 +311,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    }, 500);
+    }, 1000);
   }
 
   // Submit contact info
@@ -175,12 +332,11 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
       setShowContactForm(false);
 
-      // Add system message
       const systemMessage: Message = {
         id: generateId(),
         content: contactType === "whatsapp"
-          ? "תודה! נמשיך את השיחה בוואטסאפ."
-          : "תודה! נחזור אליך בהקדם.",
+          ? "Great! We'll continue on WhatsApp."
+          : "Thank you! We'll get back to you soon.",
         senderType: "system",
         senderName: null,
         source: "widget",
@@ -192,69 +348,244 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }
 
-  // CSS custom properties for theming
-  const cssVars = {
-    "--widget-primary": primaryColor,
-    "--widget-secondary": secondaryColor,
-  } as React.CSSProperties;
-
   return (
-    <div style={cssVars} className="whizchat-widget">
-      {/* Styles */}
+    <div className="whizchat-widget-container">
       <style>{`
-        .whizchat-widget {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        /* ========================================
+           WhizChat Widget - Premium Design
+           Clean, subtle, modern aesthetics
+           ======================================== */
+
+        .whizchat-widget-container {
+          --wc-primary: ${primaryColor};
+          --wc-primary-hover: ${secondaryColor};
+          --wc-bg: #FFFFFF;
+          --wc-bg-secondary: #F8F9FA;
+          --wc-text: #1a1a2e;
+          --wc-text-secondary: #6B7280;
+          --wc-border: #E8EAED;
+          --wc-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+          --wc-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.12);
+          --wc-radius: 1rem;
+          --wc-radius-lg: 1.25rem;
+
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
           position: fixed;
-          bottom: 20px;
-          ${position}: 20px;
+          bottom: 24px;
+          ${position}: 24px;
           z-index: 999999;
-          direction: rtl;
+          direction: ltr;
         }
 
-        .whizchat-button {
+        /* ========================================
+           Chat Button
+           ======================================== */
+        .wc-button {
           width: 60px;
           height: 60px;
           border-radius: 50%;
-          background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
           border: none;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: var(--wc-shadow-lg), 0 0 0 0 rgba(192, 38, 211, 0.3);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
         }
 
-        .whizchat-button:hover {
+        .wc-button:hover {
           transform: scale(1.05);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+          box-shadow: var(--wc-shadow-lg), 0 0 0 8px rgba(192, 38, 211, 0.1);
         }
 
-        .whizchat-button svg {
-          width: 28px;
-          height: 28px;
-          fill: white;
+        .wc-button:active {
+          transform: scale(0.98);
         }
 
-        .whizchat-window {
+        .wc-button svg {
+          width: 26px;
+          height: 26px;
+          color: white;
+          transition: transform 0.3s ease;
+        }
+
+        .wc-button.open svg {
+          transform: rotate(90deg);
+        }
+
+        /* Notification badge */
+        .wc-button-badge {
           position: absolute;
-          bottom: 70px;
+          top: -4px;
+          right: -4px;
+          min-width: 20px;
+          height: 20px;
+          padding: 0 6px;
+          border-radius: 10px;
+          background: #EF4444;
+          color: white;
+          font-size: 11px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          animation: wc-pulse 2s infinite;
+        }
+
+        @keyframes wc-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+
+        /* ========================================
+           Chat Window
+           ======================================== */
+        .wc-window {
+          position: absolute;
+          bottom: 72px;
           ${position}: 0;
           width: 380px;
-          height: 500px;
-          background: white;
-          border-radius: 16px;
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+          height: 540px;
+          background: var(--wc-bg);
+          border-radius: var(--wc-radius-lg);
+          box-shadow: var(--wc-shadow-lg);
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          animation: slideUp 0.3s ease-out;
+          animation: wc-slide-up 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          border: 1px solid var(--wc-border);
         }
 
-        @keyframes slideUp {
+        @keyframes wc-slide-up {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(20px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        /* ========================================
+           Header
+           ======================================== */
+        .wc-header {
+          background: var(--wc-bg);
+          padding: 16px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid var(--wc-border);
+        }
+
+        .wc-header-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .wc-header-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(192, 38, 211, 0.25);
+        }
+
+        .wc-header-avatar svg {
+          width: 20px;
+          height: 20px;
+          color: white;
+        }
+
+        .wc-header-info h3 {
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--wc-text);
+          margin: 0;
+        }
+
+        .wc-header-status {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          color: var(--wc-text-secondary);
+          margin-top: 2px;
+        }
+
+        .wc-status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #10B981;
+          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+
+        .wc-status-dot.offline {
+          background: #9CA3AF;
+          box-shadow: none;
+        }
+
+        .wc-close {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--wc-text-secondary);
+          transition: all 0.2s ease;
+        }
+
+        .wc-close:hover {
+          background: var(--wc-bg-secondary);
+          color: var(--wc-text);
+        }
+
+        /* ========================================
+           Messages
+           ======================================== */
+        .wc-messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: var(--wc-bg-secondary);
+        }
+
+        .wc-messages::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .wc-messages::-webkit-scrollbar-thumb {
+          background: var(--wc-border);
+          border-radius: 2px;
+        }
+
+        .wc-message {
+          display: flex;
+          flex-direction: column;
+          max-width: 85%;
+          animation: wc-fade-in 0.25s ease-out;
+        }
+
+        @keyframes wc-fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
           }
           to {
             opacity: 1;
@@ -262,341 +593,435 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           }
         }
 
-        .whizchat-header {
-          background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
-          color: white;
-          padding: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .whizchat-header-title {
-          font-weight: 600;
-          font-size: 16px;
-        }
-
-        .whizchat-header-status {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 13px;
-          opacity: 0.9;
-        }
-
-        .whizchat-status-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #4ade80;
-        }
-
-        .whizchat-status-dot.offline {
-          background: #f87171;
-        }
-
-        .whizchat-close {
-          background: none;
-          border: none;
-          color: white;
-          cursor: pointer;
-          padding: 4px;
-        }
-
-        .whizchat-messages {
-          flex: 1;
-          overflow-y: auto;
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .whizchat-message {
-          max-width: 80%;
-          padding: 10px 14px;
+        .wc-message-bubble {
+          padding: 12px 16px;
           border-radius: 16px;
           font-size: 14px;
-          line-height: 1.4;
-          animation: fadeIn 0.2s ease-out;
+          line-height: 1.5;
+          position: relative;
+          width: fit-content;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(5px); }
-          to { opacity: 1; transform: translateY(0); }
+        .wc-message.customer {
+          align-self: flex-end;
+          align-items: flex-end;
         }
 
-        .whizchat-message.customer {
-          background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
-          color: white;
-          align-self: flex-start;
+        .wc-message.customer .wc-message-bubble {
+          background: var(--wc-bg);
+          color: var(--wc-text);
+          border: 1px solid var(--wc-border);
           border-bottom-right-radius: 4px;
         }
 
-        .whizchat-message.agent,
-        .whizchat-message.bot {
-          background: #f3f4f6;
-          color: #1f2937;
-          align-self: flex-end;
-          border-bottom-left-radius: 4px;
+        .wc-message.agent,
+        .wc-message.bot {
+          align-self: flex-start;
+          align-items: flex-start;
         }
 
-        .whizchat-message.system {
-          background: #fef3c7;
-          color: #92400e;
-          align-self: center;
+        .wc-message.agent .wc-message-bubble,
+        .wc-message.bot .wc-message-bubble {
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          color: white;
+          border-bottom-left-radius: 4px;
+          box-shadow: 0 2px 8px rgba(192, 38, 211, 0.2);
+        }
+
+        .wc-message.system .wc-message-bubble {
+          background: rgba(99, 102, 241, 0.1);
+          color: #4338CA;
+          border-radius: 12px;
           text-align: center;
           font-size: 13px;
+          align-self: center;
           max-width: 90%;
         }
 
-        .whizchat-message-time {
-          font-size: 11px;
-          opacity: 0.7;
+        .wc-message-meta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
           margin-top: 4px;
+          padding: 0 4px;
         }
 
-        .whizchat-faq {
+        .wc-message.customer .wc-message-meta {
+          justify-content: flex-end;
+        }
+
+        .wc-message-time {
+          font-size: 11px;
+          color: var(--wc-text-secondary);
+        }
+
+        .wc-message-status {
+          display: flex;
+          align-items: center;
+          color: var(--wc-text-secondary);
+        }
+
+        /* Typing indicator */
+        .wc-typing {
+          display: flex;
+          align-items: center;
+          gap: 4px;
           padding: 12px 16px;
-          border-top: 1px solid #e5e7eb;
-          background: #f9fafb;
+          background: var(--wc-bg);
+          border-radius: 16px;
+          border-bottom-left-radius: 4px;
+          align-self: flex-start;
+          border: 1px solid var(--wc-border);
         }
 
-        .whizchat-faq-title {
+        .wc-typing-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--wc-text-secondary);
+          animation: wc-typing 1.4s infinite ease-in-out;
+        }
+
+        .wc-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .wc-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes wc-typing {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.4;
+          }
+          30% {
+            transform: translateY(-4px);
+            opacity: 1;
+          }
+        }
+
+        /* ========================================
+           FAQ
+           ======================================== */
+        .wc-faq {
+          padding: 12px 16px;
+          border-top: 1px solid var(--wc-border);
+          background: var(--wc-bg);
+        }
+
+        .wc-faq-title {
           font-size: 12px;
-          color: #6b7280;
-          margin-bottom: 8px;
+          color: var(--wc-text-secondary);
+          margin-bottom: 10px;
+          font-weight: 500;
         }
 
-        .whizchat-faq-list {
+        .wc-faq-list {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
-        }
-
-        .whizchat-faq-item {
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 20px;
-          padding: 6px 12px;
-          font-size: 13px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .whizchat-faq-item:hover {
-          background: var(--widget-primary);
-          color: white;
-          border-color: var(--widget-primary);
-        }
-
-        .whizchat-input-area {
-          padding: 12px 16px;
-          border-top: 1px solid #e5e7eb;
-          display: flex;
           gap: 8px;
         }
 
-        .whizchat-input {
+        .wc-faq-item {
+          background: var(--wc-bg);
+          border: 1px solid var(--wc-border);
+          border-radius: 20px;
+          padding: 8px 14px;
+          font-size: 13px;
+          color: var(--wc-text);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .wc-faq-item:hover {
+          border-color: var(--wc-primary);
+          color: var(--wc-primary);
+          background: rgba(192, 38, 211, 0.05);
+        }
+
+        /* ========================================
+           Input Area
+           ======================================== */
+        .wc-input-area {
+          padding: 16px;
+          border-top: 1px solid var(--wc-border);
+          background: var(--wc-bg);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .wc-input-wrapper {
           flex: 1;
-          border: 1px solid #e5e7eb;
+          position: relative;
+        }
+
+        .wc-input {
+          width: 100%;
+          padding: 12px 16px;
+          border: 1px solid var(--wc-border);
           border-radius: 24px;
-          padding: 10px 16px;
           font-size: 14px;
           outline: none;
-          transition: border-color 0.2s;
+          transition: all 0.2s ease;
+          background: var(--wc-bg-secondary);
+          color: var(--wc-text);
         }
 
-        .whizchat-input:focus {
-          border-color: var(--widget-primary);
+        .wc-input:focus {
+          border-color: var(--wc-primary);
+          box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.1);
+          background: var(--wc-bg);
         }
 
-        .whizchat-send {
-          background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
-          border: none;
+        .wc-input::placeholder {
+          color: var(--wc-text-secondary);
+        }
+
+        .wc-send {
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
-          width: 40px;
-          height: 40px;
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          border: none;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: transform 0.2s;
+          color: white;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
         }
 
-        .whizchat-send:hover:not(:disabled) {
+        .wc-send:hover:not(:disabled) {
           transform: scale(1.05);
+          box-shadow: 0 4px 12px rgba(192, 38, 211, 0.3);
         }
 
-        .whizchat-send:disabled {
-          opacity: 0.5;
+        .wc-send:disabled {
+          opacity: 0.4;
           cursor: not-allowed;
         }
 
-        .whizchat-send svg {
+        .wc-send svg {
           width: 18px;
           height: 18px;
-          fill: white;
         }
 
-        .whizchat-contact-form {
-          padding: 16px;
-          border-top: 1px solid #e5e7eb;
-          background: #f9fafb;
+        /* ========================================
+           Contact Form
+           ======================================== */
+        .wc-contact {
+          padding: 20px;
+          border-top: 1px solid var(--wc-border);
+          background: var(--wc-bg);
         }
 
-        .whizchat-contact-buttons {
+        .wc-contact-title {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--wc-text);
+          margin-bottom: 12px;
+        }
+
+        .wc-contact-buttons {
           display: flex;
           gap: 8px;
           margin-bottom: 12px;
         }
 
-        .whizchat-contact-btn {
+        .wc-contact-btn {
           flex: 1;
-          padding: 10px;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          background: white;
+          padding: 12px;
+          border: 1px solid var(--wc-border);
+          border-radius: 12px;
+          background: var(--wc-bg);
           cursor: pointer;
           font-size: 14px;
-          transition: all 0.2s;
-        }
-
-        .whizchat-contact-btn.selected {
-          background: var(--widget-primary);
-          color: white;
-          border-color: var(--widget-primary);
-        }
-
-        .whizchat-contact-input {
-          width: 100%;
-          margin-top: 8px;
-          padding: 10px;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          font-size: 14px;
-        }
-
-        .whizchat-contact-submit {
-          width: 100%;
-          margin-top: 8px;
-          padding: 10px;
-          background: var(--widget-primary);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 14px;
-        }
-
-        .whizchat-loading {
+          color: var(--wc-text);
+          transition: all 0.2s ease;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 40px;
+          gap: 8px;
         }
 
-        .whizchat-spinner {
+        .wc-contact-btn:hover {
+          border-color: var(--wc-primary);
+        }
+
+        .wc-contact-btn.selected {
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          color: white;
+          border-color: transparent;
+        }
+
+        .wc-contact-input {
+          width: 100%;
+          margin-top: 8px;
+          padding: 12px;
+          border: 1px solid var(--wc-border);
+          border-radius: 12px;
+          font-size: 14px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .wc-contact-input:focus {
+          border-color: var(--wc-primary);
+        }
+
+        .wc-contact-submit {
+          width: 100%;
+          margin-top: 12px;
+          padding: 12px;
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          color: white;
+          border: none;
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .wc-contact-submit:hover {
+          opacity: 0.9;
+        }
+
+        /* ========================================
+           Loading
+           ======================================== */
+        .wc-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex: 1;
+        }
+
+        .wc-spinner {
           width: 32px;
           height: 32px;
-          border: 3px solid #e5e7eb;
-          border-top-color: var(--widget-primary);
+          border: 3px solid var(--wc-border);
+          border-top-color: var(--wc-primary);
           border-radius: 50%;
-          animation: spin 0.8s linear infinite;
+          animation: wc-spin 0.8s linear infinite;
         }
 
-        @keyframes spin {
+        @keyframes wc-spin {
           to { transform: rotate(360deg); }
         }
 
+        /* ========================================
+           Responsive
+           ======================================== */
         @media (max-width: 480px) {
-          .whizchat-window {
-            width: calc(100vw - 40px);
-            height: calc(100vh - 120px);
+          .wc-window {
+            width: calc(100vw - 32px);
+            height: calc(100vh - 140px);
             bottom: 80px;
+            right: 16px !important;
+            left: 16px !important;
           }
         }
       `}</style>
 
       {/* Chat Button */}
       <button
-        className="whizchat-button"
+        className={`wc-button ${isOpen ? 'open' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? "סגור צ'אט" : "פתח צ'אט"}
+        aria-label={isOpen ? "Close chat" : "Open chat"}
       >
         {isOpen ? (
-          <svg viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         ) : (
-          <svg viewBox="0 0 24 24">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         )}
       </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="whizchat-window">
+        <div className="wc-window">
           {/* Header */}
-          <div className="whizchat-header">
-            <div>
-              <div className="whizchat-header-title">WhizChat</div>
-              <div className="whizchat-header-status">
-                <span
-                  className={`whizchat-status-dot ${!isOnline ? "offline" : ""}`}
-                />
-                {isOnline ? "מחובר" : "לא מחובר"}
+          <div className="wc-header">
+            <div className="wc-header-content">
+              <div className="wc-header-avatar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div className="wc-header-info">
+                <h3>WhizChat</h3>
+                <div className="wc-header-status">
+                  <span className={`wc-status-dot ${!isOnline ? 'offline' : ''}`} />
+                  {isOnline ? "Online" : "Offline"}
+                </div>
               </div>
             </div>
-            <button className="whizchat-close" onClick={() => setIsOpen(false)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            <button className="wc-close" onClick={() => setIsOpen(false)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
           </div>
 
           {/* Messages */}
-          <div className="whizchat-messages">
+          <div className="wc-messages">
             {isLoading ? (
-              <div className="whizchat-loading">
-                <div className="whizchat-spinner" />
+              <div className="wc-loading">
+                <div className="wc-spinner" />
               </div>
             ) : (
               <>
                 {/* Welcome message */}
                 {welcomeMessage && messages.length === 0 && (
-                  <div className="whizchat-message bot">
-                    {welcomeMessage}
+                  <div className="wc-message bot">
+                    <div className="wc-message-bubble">{welcomeMessage}</div>
                   </div>
                 )}
 
                 {/* Messages */}
                 {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`whizchat-message ${msg.senderType}`}
-                  >
-                    <div>{msg.content}</div>
-                    <div className="whizchat-message-time">
-                      {formatTime(msg.createdAt)}
-                    </div>
+                  <div key={msg.id} className={`wc-message ${msg.senderType}`}>
+                    <div className="wc-message-bubble">{msg.content}</div>
+                    {msg.senderType !== 'system' && (
+                      <div className="wc-message-meta">
+                        <span className="wc-message-time">{formatTime(msg.createdAt)}</span>
+                        {msg.senderType === 'customer' && (
+                          <span className="wc-message-status">
+                            <CheckIcon />
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
+
+                {/* Typing indicator - show when agent is typing */}
+                {(isTyping || agentIsTyping) && (
+                  <div className="wc-typing">
+                    <span className="wc-typing-dot" />
+                    <span className="wc-typing-dot" />
+                    <span className="wc-typing-dot" />
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </>
             )}
           </div>
 
           {/* FAQ */}
-          {faqItems.length > 0 && messages.length === 0 && (
-            <div className="whizchat-faq">
-              <div className="whizchat-faq-title">שאלות נפוצות:</div>
-              <div className="whizchat-faq-list">
+          {faqItems.length > 0 && messages.length === 0 && !isLoading && (
+            <div className="wc-faq">
+              <div className="wc-faq-title">Frequently asked:</div>
+              <div className="wc-faq-list">
                 {faqItems.slice(0, 4).map((item) => (
                   <button
                     key={item.id}
-                    className="whizchat-faq-item"
+                    className="wc-faq-item"
                     onClick={() => handleFAQClick(item)}
                   >
                     {item.question}
@@ -608,42 +1033,47 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
           {/* Contact Form */}
           {showContactForm && (
-            <div className="whizchat-contact-form">
-              <div className="whizchat-contact-buttons">
+            <div className="wc-contact">
+              <div className="wc-contact-title">How should we reach you?</div>
+              <div className="wc-contact-buttons">
                 <button
-                  className={`whizchat-contact-btn ${contactType === "email" ? "selected" : ""}`}
-                  onClick={() => setContactType("email")}
+                  className={`wc-contact-btn ${contactType === 'email' ? 'selected' : ''}`}
+                  onClick={() => setContactType('email')}
                 >
-                  📧 אימייל
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  Email
                 </button>
                 <button
-                  className={`whizchat-contact-btn ${contactType === "whatsapp" ? "selected" : ""}`}
-                  onClick={() => setContactType("whatsapp")}
+                  className={`wc-contact-btn ${contactType === 'whatsapp' ? 'selected' : ''}`}
+                  onClick={() => setContactType('whatsapp')}
                 >
-                  💬 וואטסאפ
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                  WhatsApp
                 </button>
               </div>
               {contactType && (
                 <>
                   <input
                     type="text"
-                    className="whizchat-contact-input"
-                    placeholder="שם"
+                    className="wc-contact-input"
+                    placeholder="Your name"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                   />
                   <input
-                    type={contactType === "email" ? "email" : "tel"}
-                    className="whizchat-contact-input"
-                    placeholder={contactType === "email" ? "כתובת אימייל" : "מספר טלפון"}
+                    type={contactType === 'email' ? 'email' : 'tel'}
+                    className="wc-contact-input"
+                    placeholder={contactType === 'email' ? 'Email address' : 'Phone number'}
                     value={contactValue}
                     onChange={(e) => setContactValue(e.target.value)}
                   />
-                  <button
-                    className="whizchat-contact-submit"
-                    onClick={submitContact}
-                  >
-                    שלח
+                  <button className="wc-contact-submit" onClick={submitContact}>
+                    Continue
                   </button>
                 </>
               )}
@@ -651,26 +1081,29 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           )}
 
           {/* Input Area */}
-          <div className="whizchat-input-area">
-            <input
-              type="text"
-              className="whizchat-input"
-              placeholder="הקלד הודעה..."
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  sendMessage(inputValue);
-                }
-              }}
-              disabled={isSending}
-            />
+          <div className="wc-input-area">
+            <div className="wc-input-wrapper">
+              <input
+                ref={inputRef}
+                type="text"
+                className="wc-input"
+                placeholder="Type a message..."
+                value={inputValue}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    sendMessage(inputValue);
+                  }
+                }}
+                disabled={isSending}
+              />
+            </div>
             <button
-              className="whizchat-send"
+              className="wc-send"
               onClick={() => sendMessage(inputValue)}
               disabled={!inputValue.trim() || isSending}
             >
-              <svg viewBox="0 0 24 24">
+              <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
               </svg>
             </button>

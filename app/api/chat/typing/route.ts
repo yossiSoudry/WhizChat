@@ -1,17 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { typingSchema } from "@/lib/validations/chat";
 
+// GET - Check if other party is typing
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const conversationId = searchParams.get("conversationId");
+    const userType = searchParams.get("userType") || "customer";
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: "conversationId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find typing indicator from the OTHER party
+    const otherUserType = userType === "customer" ? "agent" : "customer";
+
+    const typingIndicator = await prisma.typingIndicator.findFirst({
+      where: {
+        conversationId,
+        userType: otherUserType,
+        isTyping: true,
+        // Only consider recent typing (within last 5 seconds)
+        updatedAt: {
+          gte: new Date(Date.now() - 5000),
+        },
+      },
+    });
+
+    return NextResponse.json({
+      isTyping: !!typingIndicator,
+    });
+  } catch (error) {
+    console.error("Get typing status error:", error);
+    return NextResponse.json(
+      { error: "Failed to get typing status" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Update typing status
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validatedData = typingSchema.parse(body);
+    const { conversationId, isTyping, userType = "customer", userId = "anonymous" } = body;
 
-    const { conversationId, isTyping } = validatedData;
-
-    // Get user info from headers (set by Supabase auth)
-    const userId = request.headers.get("x-user-id") || "anonymous";
-    const userType = request.headers.get("x-user-type") as "customer" | "agent" || "customer";
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: "conversationId is required" },
+        { status: 400 }
+      );
+    }
 
     // Verify conversation exists
     const conversation = await prisma.conversation.findUnique({
@@ -48,14 +90,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Typing indicator error:", error);
-
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Invalid request data" },
-        { status: 400 }
-      );
-    }
-
     return NextResponse.json(
       { error: "Failed to update typing status" },
       { status: 500 }

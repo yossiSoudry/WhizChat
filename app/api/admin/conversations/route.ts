@@ -20,13 +20,28 @@ export async function GET(request: NextRequest) {
     const { status, archived, search, page, limit } = validatedData;
     const skip = (page - 1) * limit;
 
+    // Get filter type from query
+    const filter = searchParams.get("filter"); // "all" | "active" | "unanswered"
+
     // Build where clause
     const whereClause: Prisma.ConversationWhereInput = {
       isArchived: archived,
+      // Only show conversations that have at least one message
+      lastMessagePreview: { not: null },
     };
 
     if (status) {
       whereClause.status = status;
+    }
+
+    // Apply filter
+    if (filter === "active") {
+      // Active = customer is online (seen in last 60 seconds)
+      const onlineThreshold = new Date(Date.now() - 60 * 1000);
+      whereClause.lastReadAtCustomer = { gte: onlineThreshold };
+    } else if (filter === "unanswered") {
+      // Unanswered = has unread messages (unreadCount > 0)
+      whereClause.unreadCount = { gt: 0 };
     }
 
     if (search) {
@@ -56,6 +71,9 @@ export async function GET(request: NextRequest) {
       prisma.conversation.count({ where: whereClause }),
     ]);
 
+    // Calculate online threshold (60 seconds)
+    const onlineThreshold = new Date(Date.now() - 60 * 1000);
+
     // Format response
     const formattedConversations = conversations.map((conv) => ({
       id: conv.id,
@@ -71,6 +89,7 @@ export async function GET(request: NextRequest) {
       lastReadAtAgent: conv.lastReadAtAgent,
       movedToWhatsapp: conv.movedToWhatsapp,
       createdAt: conv.createdAt,
+      isCustomerOnline: conv.lastReadAtCustomer ? conv.lastReadAtCustomer >= onlineThreshold : false,
     }));
 
     return NextResponse.json({

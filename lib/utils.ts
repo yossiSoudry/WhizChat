@@ -1,50 +1,28 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("he-IL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
+export function formatTime(date: string | Date): string {
+  const d = new Date(date);
+  return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function formatTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("he-IL", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-}
-
-export function formatRelativeTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
+export function formatRelativeTime(date: string | Date): string {
+  const d = new Date(date);
   const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const diff = now.getTime() - d.getTime();
 
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
 
-  return formatDate(d);
-}
+  if (minutes < 1) return 'עכשיו';
+  if (minutes < 60) return `לפני ${minutes} דק'`;
+  if (hours < 24) return `לפני ${hours} שע'`;
+  if (days < 7) return `לפני ${days} ימים`;
 
-export function truncate(str: string, length: number): string {
-  if (str.length <= length) return str;
-  return str.slice(0, length) + "...";
-}
-
-export function generateNonce(): string {
-  return crypto.randomUUID().slice(0, 12);
+  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
 }
