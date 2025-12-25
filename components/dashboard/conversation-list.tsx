@@ -132,15 +132,15 @@ export function ConversationList({
                 <button
                   onClick={() => onSelect(conv.id)}
                   className={cn(
-                    "w-full h-[88px] px-4 py-3 text-right transition-all duration-150 border-b border-border",
+                    "w-full px-4 py-2.5 text-right transition-all duration-150 border-b border-border",
                     "hover:bg-muted/50 focus:outline-none focus:bg-muted/50",
                     selectedId === conv.id && "bg-muted/80"
                   )}
                 >
-                  <div className="flex items-center gap-3 h-full">
+                  <div className="flex items-center gap-3">
                     {/* Avatar */}
                     <div className="relative shrink-0">
-                      <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
+                      <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
                         <AvatarFallback
                           className={cn(
                             "text-sm font-medium",
@@ -155,26 +155,32 @@ export function ConversationList({
 
                       {/* Online status dot */}
                       {conv.isCustomerOnline && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full status-online border-2 border-background" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full status-online border-2 border-background" />
                       )}
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="flex-1 min-w-0">
                       {/* Header row */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm truncate text-foreground">
-                          {conv.customerName}
-                        </span>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {conv.unreadCount > 0 && (
-                            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                              {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                            </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-medium text-sm truncate text-foreground">
+                            {conv.customerName}
+                          </span>
+                          {conv.customerType === "wordpress" && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 text-[9px] px-1 gap-0.5 bg-primary/5 text-primary border-0 shrink-0"
+                            >
+                              <User className="w-2 h-2" />
+                              רשום
+                            </Badge>
                           )}
-                          {conv.lastMessageAt && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatRelativeTime(conv.lastMessageAt)}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {conv.unreadCount > 0 && (
+                            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
+                              {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
                             </span>
                           )}
                         </div>
@@ -182,7 +188,7 @@ export function ConversationList({
 
                       {/* Message preview */}
                       <p className={cn(
-                        "text-sm truncate mt-0.5",
+                        "text-[13px] truncate",
                         conv.unreadCount > 0
                           ? "text-foreground font-medium"
                           : "text-muted-foreground"
@@ -190,30 +196,26 @@ export function ConversationList({
                         {conv.lastMessagePreview || "שיחה חדשה"}
                       </p>
 
-                      {/* Tags - fixed height row */}
-                      <div className="flex items-center gap-1.5 mt-1.5 h-5">
-                        {conv.customerType === "wordpress" && (
-                          <Badge
-                            variant="secondary"
-                            className="h-5 text-[10px] px-1.5 gap-1 bg-primary/5 text-primary border-0"
-                          >
-                            <User className="w-2.5 h-2.5" />
-                            רשום
-                          </Badge>
+                      {/* Bottom row - time and status */}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {conv.lastMessageAt && (
+                          <span className="text-[11px] text-muted-foreground">
+                            {formatRelativeTime(conv.lastMessageAt)}
+                          </span>
                         )}
                         {conv.status === "closed" && (
                           <Badge
                             variant="outline"
-                            className="h-5 text-[10px] px-1.5"
+                            className="h-4 text-[9px] px-1"
                           >
                             סגור
                           </Badge>
                         )}
                         {conv.movedToWhatsapp && (
                           <Badge
-                            className="h-5 text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-0"
+                            className="h-4 text-[9px] px-1 bg-emerald-500/10 text-emerald-600 border-0"
                           >
-                            WhatsApp
+                            WA
                           </Badge>
                         )}
                       </div>

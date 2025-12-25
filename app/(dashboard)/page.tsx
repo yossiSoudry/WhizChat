@@ -64,17 +64,6 @@ export default function ConversationsPage() {
     return () => window.removeEventListener("resize", checkScrollButtons);
   }, [checkScrollButtons]);
 
-  const scrollFilters = (direction: "left" | "right") => {
-    if (filtersRef.current) {
-      const scrollAmount = 100;
-      filtersRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-      setTimeout(checkScrollButtons, 300);
-    }
-  };
-
   const fetchFilterCounts = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/conversations/unread-count");
@@ -148,10 +137,15 @@ export default function ConversationsPage() {
             </div>
           </div>
           {/* Filter tabs with horizontal scroll */}
-          <div className="flex items-center pt-2 pb-2 px-1">
+          <div className="flex items-center pt-3 pb-2 px-1">
             {/* Right scroll arrow */}
             <button
-              onClick={() => scrollFilters("left")}
+              onClick={() => {
+                if (filtersRef.current) {
+                  filtersRef.current.scrollLeft -= 100;
+                  setTimeout(checkScrollButtons, 300);
+                }
+              }}
               className={cn(
                 "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
                 canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -164,8 +158,8 @@ export default function ConversationsPage() {
             <div
               ref={filtersRef}
               onScroll={checkScrollButtons}
-              className="flex-1 flex items-center gap-1.5 px-1 overflow-x-auto scrollbar-none"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              className="flex-1 flex items-center gap-1.5 px-1 overflow-x-auto"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
             >
               <AnimateIcon animateOnHover asChild>
                 <button
@@ -242,7 +236,12 @@ export default function ConversationsPage() {
 
             {/* Left scroll arrow */}
             <button
-              onClick={() => scrollFilters("right")}
+              onClick={() => {
+                if (filtersRef.current) {
+                  filtersRef.current.scrollLeft += 100;
+                  setTimeout(checkScrollButtons, 300);
+                }
+              }}
               className={cn(
                 "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
                 canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
