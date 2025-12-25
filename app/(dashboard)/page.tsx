@@ -1,16 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ConversationList } from "@/components/dashboard/conversation-list";
 import { ChatView } from "@/components/dashboard/chat-view";
 import { AgentPresence } from "@/components/dashboard/agent-presence";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, MessageCircle, Wifi, MailOpen, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Fade } from "@/components/animate-ui/primitives/effects/fade";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-more";
 
 // TODO: Replace with actual agent ID from auth
 const TEMP_AGENT_ID = "temp-agent-id";
 
-type FilterType = "all" | "active" | "unanswered";
+interface FilterCounts {
+  activeCount: number;
+  unansweredCount: number;
+  unreadCount: number;
+}
+
+type FilterType = "all" | "active" | "unanswered" | "unread";
 
 interface Conversation {
   id: string;
@@ -32,6 +41,55 @@ export default function ConversationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [filterCounts, setFilterCounts] = useState<FilterCounts>({
+    activeCount: 0,
+    unansweredCount: 0,
+    unreadCount: 0,
+  });
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
+
+  const checkScrollButtons = useCallback(() => {
+    if (filtersRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = filtersRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkScrollButtons();
+    window.addEventListener("resize", checkScrollButtons);
+    return () => window.removeEventListener("resize", checkScrollButtons);
+  }, [checkScrollButtons]);
+
+  const scrollFilters = (direction: "left" | "right") => {
+    if (filtersRef.current) {
+      const scrollAmount = 100;
+      filtersRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+      setTimeout(checkScrollButtons, 300);
+    }
+  };
+
+  const fetchFilterCounts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/conversations/unread-count");
+      if (res.ok) {
+        const data = await res.json();
+        setFilterCounts({
+          activeCount: data.activeCount || 0,
+          unansweredCount: data.unansweredCount || 0,
+          unreadCount: data.unreadCount || 0,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch filter counts:", error);
+    }
+  }, []);
 
   const fetchConversations = useCallback(async (filter: FilterType = "all") => {
     try {
@@ -50,13 +108,17 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     fetchConversations(activeFilter);
-  }, [fetchConversations, activeFilter]);
+    fetchFilterCounts();
+  }, [fetchConversations, fetchFilterCounts, activeFilter]);
 
-  // Poll for new conversations every 5 seconds
+  // Poll for new conversations and counts every 5 seconds
   useEffect(() => {
-    const interval = setInterval(() => fetchConversations(activeFilter), 5000);
+    const interval = setInterval(() => {
+      fetchConversations(activeFilter);
+      fetchFilterCounts();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [fetchConversations, activeFilter]);
+  }, [fetchConversations, fetchFilterCounts, activeFilter]);
 
   const handleFilterChange = (filter: FilterType) => {
     setActiveFilter(filter);
@@ -72,50 +134,121 @@ export default function ConversationsPage() {
       <div className="w-[340px] shrink-0 border-l bg-card flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="shrink-0 border-b">
-          <div className="h-14 flex items-center justify-between px-4">
+          <div className="h-14 flex items-center px-4">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-foreground">שיחות</h1>
-              {conversations.length > 0 && (
-                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-muted text-muted-foreground text-xs font-medium">
-                  {conversations.length}
-                </span>
-              )}
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold text-foreground">שיחות</h1>
+                <p className="text-[10px] text-muted-foreground">
+                  {conversations.filter(c => c.status === 'active').length} פעילות
+                </p>
+              </div>
             </div>
           </div>
-          {/* Filter tabs */}
-          <div className="flex items-center gap-1 px-4 pb-3">
+          {/* Filter tabs with horizontal scroll */}
+          <div className="flex items-center pt-2 pb-2 px-1">
+            {/* Right scroll arrow */}
             <button
-              onClick={() => handleFilterChange("all")}
+              onClick={() => scrollFilters("left")}
               className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                activeFilter === "all"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted"
+                "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
+                canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
             >
-              הכל
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
+
+            {/* Scrollable filters container */}
+            <div
+              ref={filtersRef}
+              onScroll={checkScrollButtons}
+              className="flex-1 flex items-center gap-1.5 px-1 overflow-x-auto scrollbar-none"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              <AnimateIcon animateOnHover asChild>
+                <button
+                  onClick={() => handleFilterChange("all")}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                    activeFilter === "all"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <MessageCircleMore className="w-3.5 h-3.5 shrink-0" />
+                  הכל
+                </button>
+              </AnimateIcon>
+              <AnimateIcon animateOnHover asChild>
+                <button
+                  onClick={() => handleFilterChange("active")}
+                  className={cn(
+                    "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                    activeFilter === "active"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <Wifi className="w-3.5 h-3.5 shrink-0" />
+                  מחוברים
+                  {filterCounts.activeCount > 0 && (
+                    <span className="absolute -top-1.5 -left-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-[10px] font-medium shadow-sm">
+                      {filterCounts.activeCount}
+                    </span>
+                  )}
+                </button>
+              </AnimateIcon>
+              <AnimateIcon animateOnHover asChild>
+                <button
+                  onClick={() => handleFilterChange("unread")}
+                  className={cn(
+                    "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                    activeFilter === "unread"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <MailOpen className="w-3.5 h-3.5 shrink-0" />
+                  לא נקראו
+                  {filterCounts.unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -left-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-[10px] font-medium shadow-sm">
+                      {filterCounts.unreadCount}
+                    </span>
+                  )}
+                </button>
+              </AnimateIcon>
+              <AnimateIcon animateOnHover asChild>
+                <button
+                  onClick={() => handleFilterChange("unanswered")}
+                  className={cn(
+                    "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                    activeFilter === "unanswered"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  לא נענו
+                  {filterCounts.unansweredCount > 0 && (
+                    <span className="absolute -top-1.5 -left-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-[10px] font-medium shadow-sm">
+                      {filterCounts.unansweredCount}
+                    </span>
+                  )}
+                </button>
+              </AnimateIcon>
+            </div>
+
+            {/* Left scroll arrow */}
             <button
-              onClick={() => handleFilterChange("active")}
+              onClick={() => scrollFilters("right")}
               className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                activeFilter === "active"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted"
+                "shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted transition-colors",
+                canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"
               )}
             >
-              מחוברים
-            </button>
-            <button
-              onClick={() => handleFilterChange("unanswered")}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                activeFilter === "unanswered"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              לא נענו
+              <ChevronLeft className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -150,32 +283,36 @@ export default function ConversationsPage() {
 // Empty state component
 function EmptyState() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
       {/* Decorative background */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-        <div className="w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary/5 to-transparent blur-3xl" />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 via-primary/3 to-transparent blur-3xl" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10">
-        <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-6 mx-auto">
-          <MessageSquare className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">
-          בחר שיחה להצגה
-        </h2>
-        <p className="text-muted-foreground max-w-sm">
-          בחר שיחה מהרשימה כדי לצפות בהודעות ולהגיב ללקוחות
-        </p>
+      <Fade inView>
+        <div className="relative z-10">
+          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 mx-auto shadow-lg shadow-primary/10">
+            <MessageSquare className="w-12 h-12 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-3">
+            בחר שיחה להצגה
+          </h2>
+          <p className="text-muted-foreground max-w-md leading-relaxed">
+            בחר שיחה מהרשימה מימין כדי לצפות בהודעות ולהתחיל לשוחח עם הלקוחות שלך
+          </p>
 
-        {/* Quick stats or tips */}
-        <div className="mt-8 flex items-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
-            <span className="w-2 h-2 rounded-full status-online" />
-            <span className="text-sm text-muted-foreground">מחובר ופעיל</span>
+          {/* Status indicator */}
+          <div className="mt-10 inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-card border border-border shadow-sm">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+            </span>
+            <span className="text-sm font-medium text-foreground">מחובר ופעיל</span>
+            <span className="text-xs text-muted-foreground">• מוכן לקבל שיחות</span>
           </div>
         </div>
-      </div>
+      </Fade>
     </div>
   );
 }

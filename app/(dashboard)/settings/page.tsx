@@ -2,6 +2,13 @@
 
 import { useState, useEffect } from "react";
 import {
+  Tabs,
+  TabsContent,
+  TabsContents,
+  TabsList,
+  TabsTrigger,
+} from "@/components/animate-ui/components/animate/tabs";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -13,7 +20,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Save, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  TimePicker,
+  TimePickerInputGroup,
+  TimePickerInput,
+  TimePickerSeparator,
+  TimePickerTrigger,
+  TimePickerContent,
+  TimePickerHour,
+  TimePickerMinute,
+} from "@/components/ui/time-picker";
+import {
+  ColorPicker,
+  ColorPickerTrigger,
+  ColorPickerContent,
+  ColorPickerArea,
+  ColorPickerHueSlider,
+  ColorPickerSwatch,
+  ColorPickerEyeDropper,
+  ColorPickerInput,
+} from "@/components/ui/color-picker";
+import {
+  Save,
+  Loader2,
+  MessageSquare,
+  Palette,
+  MessageCircle,
+  Archive,
+  CheckCircle2,
+} from "lucide-react";
+import { Fade } from "@/components/animate-ui/primitives/effects/fade";
+import { Clock } from "@/components/animate-ui/icons/clock";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 
 interface Settings {
   business_hours: {
@@ -47,13 +86,13 @@ interface Settings {
 }
 
 const DAYS = [
-  { key: "sunday", label: "ראשון" },
-  { key: "monday", label: "שני" },
-  { key: "tuesday", label: "שלישי" },
-  { key: "wednesday", label: "רביעי" },
-  { key: "thursday", label: "חמישי" },
-  { key: "friday", label: "שישי" },
-  { key: "saturday", label: "שבת" },
+  { key: "sunday", label: "ראשון", short: "א" },
+  { key: "monday", label: "שני", short: "ב" },
+  { key: "tuesday", label: "שלישי", short: "ג" },
+  { key: "wednesday", label: "רביעי", short: "ד" },
+  { key: "thursday", label: "חמישי", short: "ה" },
+  { key: "friday", label: "שישי", short: "ו" },
+  { key: "saturday", label: "שבת", short: "ש" },
 ];
 
 const DEFAULT_SETTINGS: Settings = {
@@ -70,12 +109,12 @@ const DEFAULT_SETTINGS: Settings = {
     },
   },
   messages: {
-    welcome: "היי! 👋 איך אפשר לעזור?",
-    offline: "אנחנו כרגע לא זמינים. השאר הודעה ונחזור אליך בהקדם!",
-    ask_contact: "האם תרצה שנחזור אליך באימייל או בוואטסאפ?",
-    transferred_to_whatsapp: "מעולה! ממשיכים את השיחה בוואטסאפ...",
-    going_offline: "צוות התמיכה סיים את המשמרת. נחזור אליך בהקדם!",
-    agent_joined: "אתה משוחח עכשיו עם {agent_name}",
+    welcome: "Hello! How may I assist you today?",
+    offline: "We are currently unavailable. Please leave a message and we will respond as soon as possible.",
+    ask_contact: "Would you prefer to be contacted via email or WhatsApp?",
+    transferred_to_whatsapp: "Excellent! We will continue this conversation on WhatsApp.",
+    going_offline: "Our support team has concluded for the day. We will respond to your inquiry shortly.",
+    agent_joined: "You are now connected with {agent_name}.",
   },
   widget: {
     position: "right",
@@ -97,6 +136,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -106,7 +146,6 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/admin/settings");
       const data = await res.json();
-      // Merge with defaults to handle missing fields
       const mergedSettings = {
         business_hours: { ...DEFAULT_SETTINGS.business_hours, ...data.settings?.business_hours },
         messages: { ...DEFAULT_SETTINGS.messages, ...data.settings?.messages },
@@ -127,8 +166,8 @@ export default function SettingsPage() {
     if (!settings) return;
 
     setIsSaving(true);
+    setSaveSuccess(false);
     try {
-      // Save each setting separately
       const savePromises = [
         fetch("/api/admin/settings", {
           method: "PUT",
@@ -157,6 +196,8 @@ export default function SettingsPage() {
         }),
       ];
       await Promise.all(savePromises);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       console.error("Failed to save settings:", error);
     } finally {
@@ -194,7 +235,10 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">טוען הגדרות...</span>
+        </div>
       </div>
     );
   }
@@ -208,340 +252,534 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="h-full overflow-auto">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <Fade inView>
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">הגדרות</h1>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 ml-2" />
-              )}
-              שמור שינויים
-            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">הגדרות</h1>
+              <p className="text-muted-foreground mt-1">
+                נהל את הגדרות המערכת והעדפות הצ'אט
+              </p>
+            </div>
+            <AnimateIcon animateOnHover asChild>
+              <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : saveSuccess ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {saveSuccess ? "נשמר!" : "שמור שינויים"}
+              </Button>
+            </AnimateIcon>
           </div>
+        </Fade>
 
-          {/* Business Hours */}
-          <Card>
-            <CardHeader>
-              <CardTitle>שעות פעילות</CardTitle>
-              <CardDescription>
-                הגדר מתי הצוות זמין לשיחות
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {DAYS.map((day) => {
-                const schedule = settings.business_hours.schedule[day.key];
-                const isEnabled = schedule !== null;
+        {/* Tabs */}
+        <Fade inView delay={100}>
+          <Tabs defaultValue="hours" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 h-12">
+              <TabsTrigger value="hours" className="gap-2">
+                <Clock className="w-4 h-4" />
+                <span className="hidden sm:inline">שעות פעילות</span>
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">הודעות</span>
+              </TabsTrigger>
+              <TabsTrigger value="widget" className="gap-2">
+                <Palette className="w-4 h-4" />
+                <span className="hidden sm:inline">עיצוב</span>
+              </TabsTrigger>
+              <TabsTrigger value="whatsapp" className="gap-2">
+                <MessageCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </TabsTrigger>
+              <TabsTrigger value="archive" className="gap-2">
+                <Archive className="w-4 h-4" />
+                <span className="hidden sm:inline">ארכיון</span>
+              </TabsTrigger>
+            </TabsList>
 
-                return (
-                  <div
-                    key={day.key}
-                    className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
-                  >
-                    <div className="w-20">
-                      <span className="font-medium">{day.label}</span>
+            <TabsContents className="mt-6">
+            {/* Business Hours Tab */}
+            <TabsContent value="hours">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    שעות פעילות
+                  </CardTitle>
+                  <CardDescription>
+                    הגדר מתי הצוות זמין לשיחות. מחוץ לשעות אלו יוצגו הודעות אופליין.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Quick preview of schedule */}
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 mb-6">
+                    <span className="text-sm text-muted-foreground">סקירה:</span>
+                    <div className="flex items-center gap-1">
+                      {DAYS.map((day) => {
+                        const isActive = settings.business_hours.schedule[day.key] !== null;
+                        return (
+                          <Badge
+                            key={day.key}
+                            variant={isActive ? "default" : "outline"}
+                            className="w-7 h-7 p-0 flex items-center justify-center text-xs"
+                          >
+                            {day.short}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {DAYS.map((day) => {
+                    const schedule = settings.business_hours.schedule[day.key];
+                    const isEnabled = schedule !== null;
+
+                    return (
+                      <div
+                        key={day.key}
+                        className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
+                      >
+                        <div className="w-28 flex items-center gap-3">
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) =>
+                              updateSchedule(
+                                day.key,
+                                checked,
+                                schedule?.start,
+                                schedule?.end
+                              )
+                            }
+                          />
+                          <span className="font-medium">{day.label}</span>
+                        </div>
+                        {isEnabled ? (
+                          <div className="flex items-center gap-3 flex-1" dir="ltr">
+                            <TimePicker
+                              value={schedule?.start || "09:00"}
+                              onValueChange={(value) =>
+                                updateSchedule(
+                                  day.key,
+                                  true,
+                                  value,
+                                  schedule?.end
+                                )
+                              }
+                              locale="he-IL"
+                            >
+                              <TimePickerInputGroup className="w-[140px]">
+                                <TimePickerInput segment="hour" />
+                                <TimePickerSeparator />
+                                <TimePickerInput segment="minute" />
+                                <TimePickerTrigger />
+                              </TimePickerInputGroup>
+                              <TimePickerContent>
+                                <TimePickerHour format="2-digit" />
+                                <TimePickerMinute />
+                              </TimePickerContent>
+                            </TimePicker>
+                            <span className="text-muted-foreground" dir="rtl">עד</span>
+                            <TimePicker
+                              value={schedule?.end || "18:00"}
+                              onValueChange={(value) =>
+                                updateSchedule(
+                                  day.key,
+                                  true,
+                                  schedule?.start,
+                                  value
+                                )
+                              }
+                              locale="he-IL"
+                            >
+                              <TimePickerInputGroup className="w-[140px]">
+                                <TimePickerInput segment="hour" />
+                                <TimePickerSeparator />
+                                <TimePickerInput segment="minute" />
+                                <TimePickerTrigger />
+                              </TimePickerInputGroup>
+                              <TimePickerContent>
+                                <TimePickerHour format="2-digit" />
+                                <TimePickerMinute />
+                              </TimePickerContent>
+                            </TimePicker>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">סגור</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Messages Tab */}
+            <TabsContent value="messages">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    הודעות מערכת
+                  </CardTitle>
+                  <CardDescription>
+                    התאם את ההודעות האוטומטיות שהלקוחות רואים
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="welcome" className="flex items-center gap-2">
+                      הודעת פתיחה
+                      <Badge variant="secondary" className="text-[10px]">חובה</Badge>
+                    </Label>
+                    <Textarea
+                      id="welcome"
+                      value={settings.messages.welcome}
+                      onChange={(e) => updateMessage("welcome", e.target.value)}
+                      placeholder="היי! 👋 איך אפשר לעזור?"
+                      className="resize-none"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="offline">הודעת אופליין</Label>
+                    <Textarea
+                      id="offline"
+                      value={settings.messages.offline}
+                      onChange={(e) => updateMessage("offline", e.target.value)}
+                      placeholder="אנחנו כרגע לא זמינים..."
+                      className="resize-none"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      מוצגת כשאין נציגים מחוברים או מחוץ לשעות הפעילות
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="ask_contact">בקשת פרטי התקשרות</Label>
+                    <Textarea
+                      id="ask_contact"
+                      value={settings.messages.ask_contact}
+                      onChange={(e) => updateMessage("ask_contact", e.target.value)}
+                      placeholder="האם תרצה שנחזור אליך באימייל או בוואטסאפ?"
+                      className="resize-none"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="transferred_to_whatsapp">העברה לוואטסאפ</Label>
+                    <Textarea
+                      id="transferred_to_whatsapp"
+                      value={settings.messages.transferred_to_whatsapp}
+                      onChange={(e) => updateMessage("transferred_to_whatsapp", e.target.value)}
+                      placeholder="מעולה! ממשיכים את השיחה בוואטסאפ..."
+                      className="resize-none"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="going_offline">הודעת סיום משמרת</Label>
+                    <Textarea
+                      id="going_offline"
+                      value={settings.messages.going_offline}
+                      onChange={(e) => updateMessage("going_offline", e.target.value)}
+                      placeholder="צוות התמיכה סיים את המשמרת..."
+                      className="resize-none"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="agent_joined">הודעת הצטרפות נציג</Label>
+                    <Textarea
+                      id="agent_joined"
+                      value={settings.messages.agent_joined}
+                      onChange={(e) => updateMessage("agent_joined", e.target.value)}
+                      placeholder="אתה משוחח עכשיו עם {agent_name}"
+                      className="resize-none"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      השתמש ב-{"{agent_name}"} להצגת שם הנציג
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Widget Tab */}
+            <TabsContent value="widget">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-primary" />
+                    עיצוב Widget
+                  </CardTitle>
+                  <CardDescription>
+                    התאם את מראה הצ'אט באתר שלך
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Color Preview */}
+                  <div className="p-6 rounded-xl border border-border bg-muted/30">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div
+                        className="w-16 h-16 rounded-xl shadow-lg"
+                        style={{
+                          background: `linear-gradient(135deg, ${settings.widget.primaryColor}, ${settings.widget.secondaryColor})`,
+                        }}
+                      />
+                      <div>
+                        <p className="font-medium">תצוגה מקדימה</p>
+                        <p className="text-sm text-muted-foreground">
+                          כך ייראה כפתור הצ'אט באתר
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label>צבע ראשי</Label>
+                      <ColorPicker
+                        value={settings.widget.primaryColor}
+                        onValueChange={(value) =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, primaryColor: value },
+                          })
+                        }
+                      >
+                        <ColorPickerTrigger className="w-full justify-start gap-3">
+                          <ColorPickerSwatch className="size-6" />
+                          <span className="font-mono text-sm">{settings.widget.primaryColor}</span>
+                        </ColorPickerTrigger>
+                        <ColorPickerContent>
+                          <ColorPickerArea />
+                          <ColorPickerHueSlider />
+                          <div className="flex items-center gap-2">
+                            <ColorPickerSwatch />
+                            <ColorPickerInput withoutAlpha />
+                            <ColorPickerEyeDropper />
+                          </div>
+                        </ColorPickerContent>
+                      </ColorPicker>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>צבע משני</Label>
+                      <ColorPicker
+                        value={settings.widget.secondaryColor}
+                        onValueChange={(value) =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, secondaryColor: value },
+                          })
+                        }
+                      >
+                        <ColorPickerTrigger className="w-full justify-start gap-3">
+                          <ColorPickerSwatch className="size-6" />
+                          <span className="font-mono text-sm">{settings.widget.secondaryColor}</span>
+                        </ColorPickerTrigger>
+                        <ColorPickerContent>
+                          <ColorPickerArea />
+                          <ColorPickerHueSlider />
+                          <div className="flex items-center gap-2">
+                            <ColorPickerSwatch />
+                            <ColorPickerInput withoutAlpha />
+                            <ColorPickerEyeDropper />
+                          </div>
+                        </ColorPickerContent>
+                      </ColorPicker>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>מיקום Widget</Label>
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant={settings.widget.position === "right" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, position: "right" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        ימין
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={settings.widget.position === "left" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, position: "left" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        שמאל
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* WhatsApp Tab */}
+            <TabsContent value="whatsapp">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-emerald-500" />
+                    WhatsApp Business
+                  </CardTitle>
+                  <CardDescription>
+                    הגדרות אינטגרציה עם Green API לשליחת הודעות ב-WhatsApp
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900">
+                    <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                      כדי להשתמש באינטגרציית WhatsApp, יש להירשם ל-
+                      <a
+                        href="https://green-api.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline font-medium"
+                      >
+                        Green API
+                      </a>
+                      {" "}ולקבל את פרטי החיבור.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="businessPhone">מספר טלפון עסקי</Label>
+                    <Input
+                      id="businessPhone"
+                      value={settings.whatsapp.businessPhone}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          whatsapp: { ...settings.whatsapp, businessPhone: e.target.value },
+                        })
+                      }
+                      placeholder="+972501234567"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="instanceId">Instance ID</Label>
+                    <Input
+                      id="instanceId"
+                      value={settings.whatsapp.instanceId}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          whatsapp: { ...settings.whatsapp, instanceId: e.target.value },
+                        })
+                      }
+                      placeholder="1234567890"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="apiToken">API Token</Label>
+                    <Input
+                      id="apiToken"
+                      type="password"
+                      value={settings.whatsapp.apiToken}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          whatsapp: { ...settings.whatsapp, apiToken: e.target.value },
+                        })
+                      }
+                      placeholder="••••••••••••••••"
+                      dir="ltr"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Archive Tab */}
+            <TabsContent value="archive">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Archive className="w-5 h-5 text-primary" />
+                    הגדרות ארכיון
+                  </CardTitle>
+                  <CardDescription>
+                    קבע מתי שיחות סגורות יועברו לארכיון אוטומטית
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-border">
+                    <div className="space-y-1">
+                      <Label className="text-base">ארכיון אוטומטי</Label>
+                      <p className="text-sm text-muted-foreground">
+                        העבר שיחות סגורות לארכיון אוטומטית
+                      </p>
                     </div>
                     <Switch
-                      checked={isEnabled}
+                      checked={settings.archive.autoArchiveEnabled}
                       onCheckedChange={(checked) =>
-                        updateSchedule(
-                          day.key,
-                          checked,
-                          schedule?.start,
-                          schedule?.end
-                        )
+                        setSettings({
+                          ...settings,
+                          archive: { ...settings.archive, autoArchiveEnabled: checked },
+                        })
                       }
                     />
-                    {isEnabled && (
-                      <>
+                  </div>
+
+                  {settings.archive.autoArchiveEnabled && (
+                    <Fade inView>
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
+                        <Label className="shrink-0">העבר לארכיון אחרי</Label>
                         <Input
-                          type="time"
-                          value={schedule?.start || "09:00"}
+                          type="number"
+                          value={settings.archive.daysUntilArchive}
                           onChange={(e) =>
-                            updateSchedule(
-                              day.key,
-                              true,
-                              e.target.value,
-                              schedule?.end
-                            )
+                            setSettings({
+                              ...settings,
+                              archive: {
+                                ...settings.archive,
+                                daysUntilArchive: parseInt(e.target.value) || 30,
+                              },
+                            })
                           }
-                          className="w-32"
+                          className="w-20 text-center"
+                          min={1}
+                          dir="ltr"
                         />
-                        <span className="text-muted-foreground">עד</span>
-                        <Input
-                          type="time"
-                          value={schedule?.end || "18:00"}
-                          onChange={(e) =>
-                            updateSchedule(
-                              day.key,
-                              true,
-                              schedule?.start,
-                              e.target.value
-                            )
-                          }
-                          className="w-32"
-                        />
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          {/* Messages */}
-          <Card>
-            <CardHeader>
-              <CardTitle>הודעות מערכת</CardTitle>
-              <CardDescription>
-                התאם את ההודעות האוטומטיות
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="welcome">הודעת פתיחה</Label>
-                <Textarea
-                  id="welcome"
-                  value={settings.messages.welcome}
-                  onChange={(e) => updateMessage("welcome", e.target.value)}
-                  placeholder="היי! 👋 איך אפשר לעזור?"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="offline">הודעת אופליין</Label>
-                <Textarea
-                  id="offline"
-                  value={settings.messages.offline}
-                  onChange={(e) => updateMessage("offline", e.target.value)}
-                  placeholder="אנחנו כרגע לא זמינים..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ask_contact">בקשת פרטי התקשרות</Label>
-                <Textarea
-                  id="ask_contact"
-                  value={settings.messages.ask_contact}
-                  onChange={(e) => updateMessage("ask_contact", e.target.value)}
-                  placeholder="האם תרצה שנחזור אליך באימייל או בוואטסאפ?"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="transferred_to_whatsapp">העברה לוואטסאפ</Label>
-                <Textarea
-                  id="transferred_to_whatsapp"
-                  value={settings.messages.transferred_to_whatsapp}
-                  onChange={(e) =>
-                    updateMessage("transferred_to_whatsapp", e.target.value)
-                  }
-                  placeholder="מעולה! ממשיכים את השיחה בוואטסאפ..."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Widget Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>הגדרות Widget</CardTitle>
-              <CardDescription>
-                התאם את מראה הצ'אט באתר
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">צבע ראשי</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      id="primaryColor"
-                      value={settings.widget.primaryColor}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          widget: { ...settings.widget, primaryColor: e.target.value },
-                        })
-                      }
-                      className="w-12 h-10 p-1"
-                    />
-                    <Input
-                      type="text"
-                      value={settings.widget.primaryColor}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          widget: { ...settings.widget, primaryColor: e.target.value },
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">צבע משני</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      id="secondaryColor"
-                      value={settings.widget.secondaryColor}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          widget: { ...settings.widget, secondaryColor: e.target.value },
-                        })
-                      }
-                      className="w-12 h-10 p-1"
-                    />
-                    <Input
-                      type="text"
-                      value={settings.widget.secondaryColor}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          widget: { ...settings.widget, secondaryColor: e.target.value },
-                        })
-                      }
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>מיקום Widget</Label>
-                <div className="flex gap-4">
-                  <Button
-                    type="button"
-                    variant={settings.widget.position === "right" ? "default" : "outline"}
-                    onClick={() =>
-                      setSettings({
-                        ...settings,
-                        widget: { ...settings.widget, position: "right" },
-                      })
-                    }
-                  >
-                    ימין
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={settings.widget.position === "left" ? "default" : "outline"}
-                    onClick={() =>
-                      setSettings({
-                        ...settings,
-                        widget: { ...settings.widget, position: "left" },
-                      })
-                    }
-                  >
-                    שמאל
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* WhatsApp Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>WhatsApp</CardTitle>
-              <CardDescription>
-                הגדרות אינטגרציה עם Green API
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="businessPhone">מספר טלפון עסקי</Label>
-                <Input
-                  id="businessPhone"
-                  value={settings.whatsapp.businessPhone}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      whatsapp: { ...settings.whatsapp, businessPhone: e.target.value },
-                    })
-                  }
-                  placeholder="+972..."
-                  dir="ltr"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="instanceId">Instance ID</Label>
-                <Input
-                  id="instanceId"
-                  value={settings.whatsapp.instanceId}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      whatsapp: { ...settings.whatsapp, instanceId: e.target.value },
-                    })
-                  }
-                  placeholder="Green API Instance ID"
-                  dir="ltr"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="apiToken">API Token</Label>
-                <Input
-                  id="apiToken"
-                  type="password"
-                  value={settings.whatsapp.apiToken}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      whatsapp: { ...settings.whatsapp, apiToken: e.target.value },
-                    })
-                  }
-                  placeholder="Green API Token"
-                  dir="ltr"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Archive Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ארכיון</CardTitle>
-              <CardDescription>
-                הגדרות ארכיון שיחות אוטומטי
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Switch
-                  checked={settings.archive.autoArchiveEnabled}
-                  onCheckedChange={(checked) =>
-                    setSettings({
-                      ...settings,
-                      archive: { ...settings.archive, autoArchiveEnabled: checked },
-                    })
-                  }
-                />
-                <Label>ארכיון אוטומטי של שיחות סגורות</Label>
-              </div>
-              {settings.archive.autoArchiveEnabled && (
-                <div className="flex items-center gap-2">
-                  <Label>העבר לארכיון אחרי</Label>
-                  <Input
-                    type="number"
-                    value={settings.archive.daysUntilArchive}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        archive: {
-                          ...settings.archive,
-                          daysUntilArchive: parseInt(e.target.value) || 30,
-                        },
-                      })
-                    }
-                    className="w-20"
-                    min={1}
-                  />
-                  <span>ימים</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        <span className="text-muted-foreground shrink-0">ימים</span>
+                      </div>
+                    </Fade>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            </TabsContents>
+          </Tabs>
+        </Fade>
       </div>
     </div>
   );

@@ -335,8 +335,8 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
       const systemMessage: Message = {
         id: generateId(),
         content: contactType === "whatsapp"
-          ? "Great! We'll continue on WhatsApp."
-          : "Thank you! We'll get back to you soon.",
+          ? "Excellent! We will continue this conversation on WhatsApp."
+          : "Thank you for your inquiry. We will respond shortly.",
         senderType: "system",
         senderName: null,
         source: "widget",
@@ -1016,7 +1016,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           {/* FAQ */}
           {faqItems.length > 0 && messages.length === 0 && !isLoading && (
             <div className="wc-faq">
-              <div className="wc-faq-title">Frequently asked:</div>
+              <div className="wc-faq-title">Frequently Asked Questions:</div>
               <div className="wc-faq-list">
                 {faqItems.slice(0, 4).map((item) => (
                   <button
@@ -1034,7 +1034,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           {/* Contact Form */}
           {showContactForm && (
             <div className="wc-contact">
-              <div className="wc-contact-title">How should we reach you?</div>
+              <div className="wc-contact-title">How would you prefer to be contacted?</div>
               <div className="wc-contact-buttons">
                 <button
                   className={`wc-contact-btn ${contactType === 'email' ? 'selected' : ''}`}
@@ -1061,19 +1061,19 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                   <input
                     type="text"
                     className="wc-contact-input"
-                    placeholder="Your name"
+                    placeholder="Full Name"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                   />
                   <input
                     type={contactType === 'email' ? 'email' : 'tel'}
                     className="wc-contact-input"
-                    placeholder={contactType === 'email' ? 'Email address' : 'Phone number'}
+                    placeholder={contactType === 'email' ? 'Email Address' : 'Phone Number'}
                     value={contactValue}
                     onChange={(e) => setContactValue(e.target.value)}
                   />
                   <button className="wc-contact-submit" onClick={submitContact}>
-                    Continue
+                    Submit
                   </button>
                 </>
               )}
@@ -1087,7 +1087,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                 ref={inputRef}
                 type="text"
                 className="wc-input"
-                placeholder="Type a message..."
+                placeholder="Enter your message..."
                 value={inputValue}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyPress={(e) => {

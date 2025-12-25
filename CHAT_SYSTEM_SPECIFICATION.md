@@ -3082,6 +3082,127 @@ export function ChatWidget({ /* ... */ }: Props) {
 }
 ```
 
+### 11.9 Animated Icons - הנחיות שימוש
+
+כל **כפתור אינטראקטיבי** (שמפעיל פעולה כלשהי: ניווט, סינון, CRUD, שליחה וכו') צריך להשתמש באייקונים אנימטיביים מ-Animate UI.
+
+#### 11.9.1 התקנת אייקונים אנימטיביים
+
+```bash
+# דוגמאות להתקנת אייקונים
+npx shadcn@latest add @animate-ui/icons-message-circle-more
+npx shadcn@latest add @animate-ui/icons-send
+npx shadcn@latest add @animate-ui/icons-plus
+npx shadcn@latest add @animate-ui/icons-trash
+npx shadcn@latest add @animate-ui/icons-x
+npx shadcn@latest add @animate-ui/icons-clock
+npx shadcn@latest add @animate-ui/icons-chevron-up-down
+```
+
+#### 11.9.2 שימוש ב-AnimateIcon Wrapper
+
+**חשוב מאוד**: כדי שהאנימציה תפעל בזמן ריחוף על **הכפתור כולו** (ולא רק על האייקון), יש לעטוף את הכפתור ב-`AnimateIcon`:
+
+```tsx
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { Plus } from "@/components/animate-ui/icons/plus";
+import { Button } from "@/components/ui/button";
+
+// ✅ נכון - אנימציה על ריחוף בכפתור
+<AnimateIcon animateOnHover asChild>
+  <Button onClick={handleAdd} className="gap-2">
+    <Plus className="w-4 h-4" />
+    הוסף פריט
+  </Button>
+</AnimateIcon>
+
+// ❌ שגוי - אנימציה רק על ריחוף באייקון עצמו
+<Button onClick={handleAdd} className="gap-2">
+  <Plus className="w-4 h-4" animateOnHover />
+  הוסף פריט
+</Button>
+```
+
+#### 11.9.3 אייקונים אנימטיביים זמינים
+
+| אייקון | שימוש נפוץ | שם חבילה |
+|--------|-----------|----------|
+| MessageCircleMore | שיחות, הודעות | `@animate-ui/icons-message-circle-more` |
+| Users | נציגים, משתמשים | `@animate-ui/icons-users` |
+| ChartLine | סטטיסטיקות, גרפים | `@animate-ui/icons-chart-line` |
+| SlidersHorizontal | הגדרות | `@animate-ui/icons-sliders-horizontal` |
+| MessageCircleQuestion | שאלות נפוצות | `@animate-ui/icons-message-circle-question` |
+| MessageSquareMore | תשובות מהירות | `@animate-ui/icons-message-square-more` |
+| Send | שליחת הודעה | `@animate-ui/icons-send` |
+| X | סגירה, ביטול | `@animate-ui/icons-x` |
+| Plus | הוספה | `@animate-ui/icons-plus` |
+| Trash | מחיקה | `@animate-ui/icons-trash` |
+| RotateCcw | רענון, פתיחה מחדש | `@animate-ui/icons-rotate-ccw` |
+| Paperclip | צירוף קובץ | `@animate-ui/icons-paperclip` |
+| Clock | זמן, שעות | `@animate-ui/icons-clock` |
+| ChevronUpDown | פתיחת תפריט | `@animate-ui/icons-chevron-up-down` |
+| ChevronUp/Down | הרחבה/כיווץ | `@animate-ui/icons-chevron-up/down` |
+| Check | אישור, סימון | `@animate-ui/icons-check` |
+| Sun/Moon | מצב בהיר/כהה | `@animate-ui/icons-sun/moon` |
+
+#### 11.9.4 אייקונים שאינם זמינים ב-Animate UI
+
+האייקונים הבאים **לא קיימים** ב-Animate UI ויש להשתמש ב-lucide-react:
+- Archive
+- Save
+- Pencil/Edit2
+- Smile
+- Circle
+- Settings
+
+```tsx
+// לאייקונים לא זמינים - השתמש ב-lucide-react ללא wrapper
+import { Archive, Save } from "lucide-react";
+
+<Button onClick={handleArchive}>
+  <Archive className="w-4 h-4" />
+  ארכיון
+</Button>
+```
+
+### 11.10 Switch Component - תמיכה ב-RTL
+
+ה-Switch צריך לעבוד נכון גם ב-RTL:
+
+```tsx
+// components/ui/switch.tsx
+<SwitchPrimitives.Thumb
+  className={cn(
+    "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+    // LTR: checked = right, unchecked = left
+    "data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
+    // RTL: checked = left, unchecked = right (mirrored)
+    "rtl:data-[state=checked]:translate-x-0 rtl:data-[state=unchecked]:-translate-x-5"
+  )}
+/>
+```
+
+**הסבר:**
+- במצב LTR: כפתור ה-thumb זז **ימינה** כשמופעל
+- במצב RTL: כפתור ה-thumb צריך לזוז **שמאלה** כשמופעל (כי הכיוון מראי)
+
+### 11.11 Tabs - מניעת "הבהוב" (Blinking)
+
+ב-Animate UI Tabs, יש להסיר את `mode="wait"` מ-AnimatePresence כדי למנוע הבהוב:
+
+```tsx
+// components/animate-ui/primitives/effects/highlight.tsx
+// ❌ שגוי - גורם להבהוב
+<AnimatePresence mode="wait" initial={false}>
+  {/* ... */}
+</AnimatePresence>
+
+// ✅ נכון - ללא הבהוב
+<AnimatePresence initial={false}>
+  {/* ... */}
+</AnimatePresence>
+```
+
 ---
 
 ## 12. תרחישי שימוש

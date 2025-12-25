@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
       settings: {
         isOnline,
         welcomeMessage: isOnline
-          ? messages?.welcome || "Hey! 👋 How can we help you today?"
+          ? messages?.welcome || "Hello! How may I assist you today?"
           : messages?.offline ||
-            "We are currently offline. Leave us a message!",
+            "We are currently unavailable. Please leave a message and we will respond as soon as possible.",
         faqItems: faqItems.map((f) => ({
           id: f.id,
           question: f.question,

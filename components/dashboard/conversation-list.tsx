@@ -126,99 +126,99 @@ export function ConversationList({
         </Fade>
       ) : (
         <ScrollArea className="flex-1 min-h-0">
-          <div className="divide-y divide-border">
+          <div className="border-t border-border">
             {filteredConversations.map((conv, index) => (
               <Fade key={conv.id} delay={index * 30} inView>
                 <button
                   onClick={() => onSelect(conv.id)}
                   className={cn(
-                    "w-full p-4 text-right transition-all duration-150",
+                    "w-full h-[88px] px-4 py-3 text-right transition-all duration-150 border-b border-border",
                     "hover:bg-muted/50 focus:outline-none focus:bg-muted/50",
                     selectedId === conv.id && "bg-muted/80"
                   )}
                 >
-                <div className="flex items-start gap-3">
-                  {/* Avatar */}
-                  <div className="relative">
-                    <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
-                      <AvatarFallback
-                        className={cn(
-                          "text-sm font-medium",
-                          conv.customerType === "wordpress"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {conv.customerName.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className="flex items-center gap-3 h-full">
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                      <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
+                        <AvatarFallback
+                          className={cn(
+                            "text-sm font-medium",
+                            conv.customerType === "wordpress"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {conv.customerName.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    {/* Online status dot */}
-                    {conv.isCustomerOnline && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full status-online border-2 border-background" />
-                    )}
-                  </div>
+                      {/* Online status dot */}
+                      {conv.isCustomerOnline && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full status-online border-2 border-background" />
+                      )}
+                    </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Header row */}
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-medium text-sm truncate text-foreground">
-                        {conv.customerName}
-                      </span>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {conv.unreadCount > 0 && (
-                          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                            {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                          </span>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      {/* Header row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-sm truncate text-foreground">
+                          {conv.customerName}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {conv.unreadCount > 0 && (
+                            <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                              {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                            </span>
+                          )}
+                          {conv.lastMessageAt && (
+                            <span className="text-xs text-muted-foreground">
+                              {formatRelativeTime(conv.lastMessageAt)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Message preview */}
+                      <p className={cn(
+                        "text-sm truncate mt-0.5",
+                        conv.unreadCount > 0
+                          ? "text-foreground font-medium"
+                          : "text-muted-foreground"
+                      )}>
+                        {conv.lastMessagePreview || "שיחה חדשה"}
+                      </p>
+
+                      {/* Tags - fixed height row */}
+                      <div className="flex items-center gap-1.5 mt-1.5 h-5">
+                        {conv.customerType === "wordpress" && (
+                          <Badge
+                            variant="secondary"
+                            className="h-5 text-[10px] px-1.5 gap-1 bg-primary/5 text-primary border-0"
+                          >
+                            <User className="w-2.5 h-2.5" />
+                            רשום
+                          </Badge>
                         )}
-                        {conv.lastMessageAt && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(conv.lastMessageAt)}
-                          </span>
+                        {conv.status === "closed" && (
+                          <Badge
+                            variant="outline"
+                            className="h-5 text-[10px] px-1.5"
+                          >
+                            סגור
+                          </Badge>
+                        )}
+                        {conv.movedToWhatsapp && (
+                          <Badge
+                            className="h-5 text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-0"
+                          >
+                            WhatsApp
+                          </Badge>
                         )}
                       </div>
                     </div>
-
-                    {/* Message preview */}
-                    <p className={cn(
-                      "text-sm truncate",
-                      conv.unreadCount > 0
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
-                    )}>
-                      {conv.lastMessagePreview || "שיחה חדשה"}
-                    </p>
-
-                    {/* Tags */}
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                      {conv.customerType === "wordpress" && (
-                        <Badge
-                          variant="secondary"
-                          className="h-5 text-[10px] px-1.5 gap-1 bg-primary/5 text-primary border-0"
-                        >
-                          <User className="w-2.5 h-2.5" />
-                          רשום
-                        </Badge>
-                      )}
-                      {conv.status === "closed" && (
-                        <Badge
-                          variant="outline"
-                          className="h-5 text-[10px] px-1.5"
-                        >
-                          סגור
-                        </Badge>
-                      )}
-                      {conv.movedToWhatsapp && (
-                        <Badge
-                          className="h-5 text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-0"
-                        >
-                          WhatsApp
-                        </Badge>
-                      )}
-                    </div>
                   </div>
-                </div>
                 </button>
               </Fade>
             ))}

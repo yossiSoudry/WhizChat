@@ -4,24 +4,32 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { formatTime, cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Send,
-  X,
   Check,
   CheckCheck,
   User,
   Archive,
   Phone,
-  RotateCcw,
   Smile,
-  Paperclip,
   ArrowDownCircle,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 // Animate UI components
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { Send } from "@/components/animate-ui/icons/send";
+import { X } from "@/components/animate-ui/icons/x";
+import { RotateCcw } from "@/components/animate-ui/icons/rotate-ccw";
+import { Paperclip } from "@/components/animate-ui/icons/paperclip";
 import { Slide } from "@/components/animate-ui/primitives/effects/slide";
 import {
   Tooltip,
@@ -352,7 +360,7 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background relative">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-3">
@@ -403,30 +411,31 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
               <span className="hidden sm:inline">{conversation.waPhone}</span>
             </Button>
           )}
-          {conversation.status === "active" ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleStatusChange("closed")}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <Archive className="w-4 h-4" />
-              <span className="hidden sm:inline">סגור</span>
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleStatusChange("active")}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">פתח מחדש</span>
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {conversation.status === "active" ? (
+                <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
+                  <Archive className="w-4 h-4 ml-2" />
+                  סגור שיחה
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => handleStatusChange("active")}>
+                  <RotateCcw className="w-4 h-4 ml-2" />
+                  פתח מחדש
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onClose} className="text-destructive focus:text-destructive">
+                <X className="w-4 h-4 ml-2" />
+                סגור חלון
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -436,7 +445,7 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
         ref={scrollRef}
         onScroll={handleScroll}
       >
-        <div className="px-4 py-6 space-y-3">
+        <div className="px-4 py-6 pb-24 space-y-3">
           {/* Date separator - can be added for message grouping */}
           {messages.length > 0 && (
             <div className="flex items-center justify-center mb-4">
@@ -576,52 +585,59 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
         </Fade>
       )}
 
-      {/* Input */}
+      {/* Floating Input */}
       {conversation.status !== "closed" && (
-        <div className="p-4 border-t bg-card">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pt-8">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSend();
             }}
-            className="flex items-center gap-2"
+            className="relative"
           >
-            <div className="flex-1 relative">
-              <Input
+            <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+              <div className="flex items-center gap-1 pr-3">
+                <AnimateIcon animateOnHover asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <Paperclip className="w-4.5 h-4.5" />
+                  </Button>
+                </AnimateIcon>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                >
+                  <Smile className="w-4.5 h-4.5" />
+                </Button>
+              </div>
+              <input
                 ref={inputRef}
+                type="text"
                 value={newMessage}
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder="הקלד הודעה..."
-                className="pr-4 pl-20 py-3 bg-muted/30 border-transparent rounded-xl focus:border-border focus:bg-card text-[15px]"
+                className="flex-1 h-14 bg-transparent border-none outline-none text-[15px] px-0 placeholder:text-muted-foreground"
                 disabled={isSending}
               />
-              <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <Smile className="w-4 h-4" />
-                </Button>
+              <div className="pl-2 pr-2">
+                <AnimateIcon animateOnHover asChild>
+                  <Button
+                    type="submit"
+                    disabled={isSending || !newMessage.trim()}
+                    size="icon"
+                    className="h-10 w-10 rounded-xl bg-brand-gradient hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </AnimateIcon>
               </div>
             </div>
-            <Button
-              type="submit"
-              disabled={isSending || !newMessage.trim()}
-              size="icon"
-              className="h-11 w-11 rounded-xl bg-brand-gradient hover:opacity-90 transition-opacity"
-            >
-              <Send className="w-5 h-5" />
-            </Button>
           </form>
         </div>
       )}

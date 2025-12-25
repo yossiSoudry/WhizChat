@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Get filter type from query
-    const filter = searchParams.get("filter"); // "all" | "active" | "unanswered"
+    const filter = searchParams.get("filter"); // "all" | "active" | "unanswered" | "unread"
 
     // Build where clause
     const whereClause: Prisma.ConversationWhereInput = {
@@ -34,15 +34,16 @@ export async function GET(request: NextRequest) {
       whereClause.status = status;
     }
 
-    // Apply filter
+    // Apply basic filters (not unanswered - that needs post-processing)
     if (filter === "active") {
       // Active = customer is online (seen in last 60 seconds)
       const onlineThreshold = new Date(Date.now() - 60 * 1000);
       whereClause.lastReadAtCustomer = { gte: onlineThreshold };
-    } else if (filter === "unanswered") {
-      // Unanswered = has unread messages (unreadCount > 0)
+    } else if (filter === "unread") {
+      // Unread = agent hasn't viewed yet (unreadCount > 0)
       whereClause.unreadCount = { gt: 0 };
     }
+    // Note: "unanswered" filter is applied after fetching since we need to check last message
 
     if (search) {
       whereClause.OR = [
@@ -54,13 +55,17 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // For unanswered filter, we need to get all and filter
+    const fetchLimit = filter === "unanswered" ? 200 : limit;
+    const fetchSkip = filter === "unanswered" ? 0 : skip;
+
     // Get conversations with pagination
-    const [conversations, total] = await Promise.all([
+    let [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
         where: whereClause,
         orderBy: { lastMessageAt: "desc" },
-        skip,
-        take: limit,
+        skip: fetchSkip,
+        take: fetchLimit,
         include: {
           messages: {
             orderBy: { createdAt: "desc" },
@@ -71,26 +76,41 @@ export async function GET(request: NextRequest) {
       prisma.conversation.count({ where: whereClause }),
     ]);
 
+    // Apply unanswered filter (last message is from customer)
+    if (filter === "unanswered") {
+      conversations = conversations.filter((conv) => {
+        const lastMessage = conv.messages[0];
+        return lastMessage && lastMessage.senderType === "customer";
+      });
+      total = conversations.length;
+      // Apply pagination after filtering
+      conversations = conversations.slice(skip, skip + limit);
+    }
+
     // Calculate online threshold (60 seconds)
     const onlineThreshold = new Date(Date.now() - 60 * 1000);
 
     // Format response
-    const formattedConversations = conversations.map((conv) => ({
-      id: conv.id,
-      customerName:
-        conv.wpUserName || conv.guestName || "Anonymous",
-      customerEmail: conv.wpUserEmail || conv.guestContact || null,
-      customerType: conv.wpUserId ? "wordpress" : "guest",
-      status: conv.status,
-      contactType: conv.contactType,
-      unreadCount: conv.unreadCount,
-      lastMessageAt: conv.lastMessageAt,
-      lastMessagePreview: conv.lastMessagePreview,
-      lastReadAtAgent: conv.lastReadAtAgent,
-      movedToWhatsapp: conv.movedToWhatsapp,
-      createdAt: conv.createdAt,
-      isCustomerOnline: conv.lastReadAtCustomer ? conv.lastReadAtCustomer >= onlineThreshold : false,
-    }));
+    const formattedConversations = conversations.map((conv) => {
+      const lastMessage = conv.messages[0];
+      return {
+        id: conv.id,
+        customerName:
+          conv.wpUserName || conv.guestName || "Anonymous",
+        customerEmail: conv.wpUserEmail || conv.guestContact || null,
+        customerType: conv.wpUserId ? "wordpress" : "guest",
+        status: conv.status,
+        contactType: conv.contactType,
+        unreadCount: conv.unreadCount,
+        lastMessageAt: conv.lastMessageAt,
+        lastMessagePreview: conv.lastMessagePreview,
+        lastMessageSenderType: lastMessage?.senderType || null,
+        lastReadAtAgent: conv.lastReadAtAgent,
+        movedToWhatsapp: conv.movedToWhatsapp,
+        createdAt: conv.createdAt,
+        isCustomerOnline: conv.lastReadAtCustomer ? conv.lastReadAtCustomer >= onlineThreshold : false,
+      };
+    });
 
     return NextResponse.json({
       conversations: formattedConversations,

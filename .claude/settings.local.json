@@ -17,7 +17,9 @@
       "Bash(npx shadcn@latest init:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(Remove-Item -Force -Recurse \".next\" -ErrorAction SilentlyContinue)",
+      "Bash(powershell -Command:*)"
     ]
   }
 }
