@@ -70,17 +70,22 @@ export async function GET(request: NextRequest) {
           messages: {
             orderBy: { createdAt: "desc" },
             take: 1,
+            select: {
+              senderType: true,
+              status: true,
+            },
           },
         },
       }),
       prisma.conversation.count({ where: whereClause }),
     ]);
 
-    // Apply unanswered filter (last message is from customer)
+    // Apply unanswered filter (last message is from customer AND agent has read it)
+    // This excludes unread messages to avoid overlap with "unread" filter
     if (filter === "unanswered") {
       conversations = conversations.filter((conv) => {
         const lastMessage = conv.messages[0];
-        return lastMessage && lastMessage.senderType === "customer";
+        return lastMessage && lastMessage.senderType === "customer" && conv.unreadCount === 0;
       });
       total = conversations.length;
       // Apply pagination after filtering
@@ -105,6 +110,7 @@ export async function GET(request: NextRequest) {
         lastMessageAt: conv.lastMessageAt,
         lastMessagePreview: conv.lastMessagePreview,
         lastMessageSenderType: lastMessage?.senderType || null,
+        lastMessageStatus: lastMessage?.status || null,
         lastReadAtAgent: conv.lastReadAtAgent,
         movedToWhatsapp: conv.movedToWhatsapp,
         createdAt: conv.createdAt,

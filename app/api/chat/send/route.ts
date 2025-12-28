@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create message
+    // Create message with explicit status
     const message = await prisma.message.create({
       data: {
         conversationId,
@@ -54,6 +54,16 @@ export async function POST(request: NextRequest) {
         senderId: conversation.wpUserId?.toString() || conversation.anonUserId || null,
         senderName: senderName || conversation.wpUserName || conversation.guestName || "Guest",
         source: "widget",
+        status: "sent",
+      },
+      select: {
+        id: true,
+        content: true,
+        senderType: true,
+        senderName: true,
+        source: true,
+        createdAt: true,
+        status: true,
       },
     });
 

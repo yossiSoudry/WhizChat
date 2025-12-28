@@ -31,10 +31,11 @@ export async function GET() {
       (c) => c.lastReadAtCustomer && c.lastReadAtCustomer >= onlineThreshold
     ).length;
 
-    // Count unanswered (last message is from customer)
+    // Count unanswered (last message is from customer AND agent has read it - unreadCount === 0)
+    // This excludes unread messages to avoid overlap
     const unansweredCount = conversations.filter((c) => {
       const lastMessage = c.messages[0];
-      return lastMessage && lastMessage.senderType === "customer";
+      return lastMessage && lastMessage.senderType === "customer" && c.unreadCount === 0;
     }).length;
 
     return NextResponse.json({

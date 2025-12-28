@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { chatInitSchema } from "@/lib/validations/chat";
+import { isWithinBusinessHours } from "@/lib/business-hours";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,15 @@ export async function POST(request: NextRequest) {
           messages: {
             orderBy: { createdAt: "asc" },
             take: 50,
+            select: {
+              id: true,
+              content: true,
+              senderType: true,
+              senderName: true,
+              source: true,
+              createdAt: true,
+              status: true,
+            },
           },
         },
       });
@@ -30,6 +40,15 @@ export async function POST(request: NextRequest) {
           messages: {
             orderBy: { createdAt: "asc" },
             take: 50,
+            select: {
+              id: true,
+              content: true,
+              senderType: true,
+              senderName: true,
+              source: true,
+              createdAt: true,
+              status: true,
+            },
           },
         },
       });
@@ -76,7 +95,29 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
-    const isOnline = !!onlineAgent;
+    // Check business hours
+    const businessHoursSettings = await prisma.setting.findUnique({
+      where: { key: "business_hours" }
+    });
+
+    let withinBusinessHours = true; // Default to true if no settings
+    if (businessHoursSettings?.value) {
+      const bhSettings = businessHoursSettings.value as { timezone: string; schedule: Record<string, { start: string; end: string } | null> };
+      withinBusinessHours = isWithinBusinessHours(bhSettings);
+      console.log("Business hours check:", {
+        timezone: bhSettings.timezone,
+        withinBusinessHours,
+        currentTime: new Date().toISOString(),
+      });
+    }
+
+    console.log("Online status:", {
+      hasOnlineAgent: !!onlineAgent,
+      withinBusinessHours,
+      finalIsOnline: !!onlineAgent && withinBusinessHours,
+    });
+
+    const isOnline = !!onlineAgent && withinBusinessHours;
 
     const messages = messagesSettings?.value as {
       welcome: string;

@@ -15,6 +15,7 @@ import {
   Smile,
   ArrowDownCircle,
   MoreVertical,
+  ArrowRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,6 +45,7 @@ interface Message {
   senderName: string | null;
   source: "widget" | "dashboard" | "whatsapp";
   createdAt: string;
+  status: "sent" | "delivered" | "read";
   waStatus?: "sent" | "delivered" | "read" | "failed" | null;
 }
 
@@ -64,6 +66,8 @@ interface ChatViewProps {
   conversationId: string;
   onClose: () => void;
   onStatusChange?: () => void;
+  onRead?: () => void;
+  showBackButton?: boolean;
 }
 
 // Typing indicator component using Animate UI Fade
@@ -81,9 +85,12 @@ function TypingIndicator() {
   );
 }
 
-// Message status indicator
-function MessageStatus({ status }: { status?: string | null }) {
-  if (!status || status === "sent") {
+// Message status indicator (WhatsApp style)
+// - Single check: message sent
+// - Double check (gray): message delivered
+// - Double check (blue): message read
+function MessageStatus({ status }: { status: "sent" | "delivered" | "read" }) {
+  if (status === "sent") {
     return <Check className="w-3.5 h-3.5 text-muted-foreground" />;
   }
   if (status === "delivered") {
@@ -92,7 +99,7 @@ function MessageStatus({ status }: { status?: string | null }) {
   if (status === "read") {
     return <CheckCheck className="w-3.5 h-3.5 text-blue-500" />;
   }
-  return null;
+  return <Check className="w-3.5 h-3.5 text-muted-foreground" />;
 }
 
 // Loading skeleton
@@ -117,7 +124,7 @@ function ChatViewSkeleton() {
   );
 }
 
-export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewProps) {
+export function ChatView({ conversationId, onClose, onStatusChange, onRead, showBackButton = false }: ChatViewProps) {
   const [conversation, setConversation] = useState<ConversationDetails | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -130,8 +137,43 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Store onRead in a ref to avoid dependency issues
+  const onReadRef = useRef(onRead);
   useEffect(() => {
-    fetchConversation();
+    onReadRef.current = onRead;
+  }, [onRead]);
+
+  useEffect(() => {
+    async function loadConversation() {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/admin/conversations/${conversationId}`);
+        const data = await res.json();
+        setConversation(data.conversation);
+        setMessages(data.messages || []);
+
+        // Mark as read by agent when opening the chat
+        const readRes = await fetch("/api/chat/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            readerType: "agent",
+          }),
+        });
+
+        // Notify parent to refresh counts after marking as read
+        if (readRes.ok) {
+          onReadRef.current?.();
+        }
+      } catch (error) {
+        console.error("Failed to fetch conversation:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadConversation();
   }, [conversationId]);
 
   useEffect(() => {
@@ -154,12 +196,16 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
       if (!lastMessage) return;
 
       const res = await fetch(
-        `/api/chat/messages?conversationId=${conversationId}&after=${lastMessage.id}`
+        `/api/chat/messages?conversationId=${conversationId}&after=${lastMessage.id}&viewerType=agent`
       );
 
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
+          const newCustomerMessages = data.messages.filter(
+            (m: Message) => m.senderType === "customer"
+          );
+
           setMessages((prev) => {
             const existingIds = new Set(prev.map((m) => m.id));
             const newMessages = data.messages.filter(
@@ -167,6 +213,18 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
             );
             return [...prev, ...newMessages];
           });
+
+          // Mark new customer messages as read
+          if (newCustomerMessages.length > 0) {
+            await fetch("/api/chat/read", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                conversationId,
+                readerType: "agent",
+              }),
+            });
+          }
         }
       }
     } catch (error) {
@@ -174,66 +232,66 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
     }
   }, [conversationId, isLoading, messages]);
 
-  // Polling interval for messages
+  // Combined polling for typing, presence, and message status sync
+  const pollChatStatus = useCallback(async () => {
+    if (!conversationId || isLoading) return;
+
+    try {
+      // Fetch all status in parallel
+      const [typingRes, presenceRes, messagesRes] = await Promise.all([
+        fetch(`/api/chat/typing?conversationId=${conversationId}&userType=agent`),
+        fetch(`/api/chat/presence?conversationId=${conversationId}`),
+        fetch(`/api/chat/messages?conversationId=${conversationId}&viewerType=agent`),
+      ]);
+
+      if (typingRes.ok) {
+        const data = await typingRes.json();
+        setCustomerIsTyping(data.isTyping);
+      }
+
+      if (presenceRes.ok) {
+        const data = await presenceRes.json();
+        setCustomerIsOnline(data.isOnline);
+      }
+
+      // Sync message statuses (for read receipts on agent messages)
+      if (messagesRes.ok) {
+        const data = await messagesRes.json();
+        if (data.messages && data.messages.length > 0) {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              const updated = data.messages.find((m: Message) => m.id === msg.id);
+              if (updated && updated.status !== msg.status) {
+                return { ...msg, status: updated.status };
+              }
+              return msg;
+            })
+          );
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  }, [conversationId, isLoading]);
+
+  // Single polling interval for messages (5 seconds)
   useEffect(() => {
     if (isLoading || !conversationId) return;
 
-    const interval = setInterval(fetchNewMessages, 3000);
+    const interval = setInterval(fetchNewMessages, 5000);
     return () => clearInterval(interval);
   }, [isLoading, conversationId, fetchNewMessages]);
 
-  // Check if customer is typing
-  const checkCustomerTyping = useCallback(async () => {
-    if (!conversationId || isLoading) return;
-
-    try {
-      const res = await fetch(
-        `/api/chat/typing?conversationId=${conversationId}&userType=agent`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setCustomerIsTyping(data.isTyping);
-      }
-    } catch (error) {
-      // Silent fail
-    }
-  }, [conversationId, isLoading]);
-
-  // Poll for customer typing status
-  useEffect(() => {
-    if (isLoading || !conversationId) return;
-
-    const interval = setInterval(checkCustomerTyping, 2000);
-    return () => clearInterval(interval);
-  }, [isLoading, conversationId, checkCustomerTyping]);
-
-  // Check if customer is online
-  const checkCustomerOnline = useCallback(async () => {
-    if (!conversationId || isLoading) return;
-
-    try {
-      const res = await fetch(
-        `/api/chat/presence?conversationId=${conversationId}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setCustomerIsOnline(data.isOnline);
-      }
-    } catch (error) {
-      // Silent fail
-    }
-  }, [conversationId, isLoading]);
-
-  // Poll for customer online status
+  // Single polling interval for typing, presence, and status sync (3 seconds)
   useEffect(() => {
     if (isLoading || !conversationId) return;
 
     // Check immediately
-    checkCustomerOnline();
+    pollChatStatus();
 
-    const interval = setInterval(checkCustomerOnline, 10000);
+    const interval = setInterval(pollChatStatus, 3000);
     return () => clearInterval(interval);
-  }, [isLoading, conversationId, checkCustomerOnline]);
+  }, [isLoading, conversationId, pollChatStatus]);
 
   // Send typing status
   const sendTypingStatus = useCallback(async (typing: boolean) => {
@@ -273,19 +331,6 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
     }
   };
 
-  async function fetchConversation() {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/admin/conversations/${conversationId}`);
-      const data = await res.json();
-      setConversation(data.conversation);
-      setMessages(data.messages || []);
-    } catch (error) {
-      console.error("Failed to fetch conversation:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   function scrollToBottom() {
     if (scrollRef.current) {
@@ -364,6 +409,15 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
         <div className="flex items-center gap-3">
+          {/* Back button for mobile */}
+          {showBackButton && (
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
+            </button>
+          )}
           <div className="relative">
             <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
               <AvatarFallback className="bg-primary/10 text-primary font-medium">
@@ -520,7 +574,8 @@ export function ChatView({ conversationId, onClose, onStatusChange }: ChatViewPr
                       <span className="text-[11px] text-muted-foreground">
                         {formatTime(message.createdAt)}
                       </span>
-                      {isCustomer && <MessageStatus status={message.waStatus} />}
+                      {/* Show status for agent messages (from agent's perspective in dashboard) */}
+                      {isAgent && <MessageStatus status={message.status} />}
                       {message.source === "whatsapp" && (
                         <span className="text-[11px] text-emerald-500 font-medium">
                           WA

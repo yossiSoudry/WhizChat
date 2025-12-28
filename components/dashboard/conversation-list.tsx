@@ -4,7 +4,8 @@ import { formatRelativeTime, cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Search, Inbox } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { User, Search, Inbox, Check, CheckCheck } from "lucide-react";
 import { useState, useMemo } from "react";
 // Animate UI components
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
@@ -19,9 +20,30 @@ interface Conversation {
   unreadCount: number;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
+  lastMessageSenderType: "customer" | "agent" | "system" | null;
+  lastMessageStatus: "sent" | "delivered" | "read" | null;
   movedToWhatsapp: boolean;
   createdAt: string;
   isCustomerOnline: boolean;
+}
+
+// Message status indicator for conversation list
+function MessageStatusIndicator({ status }: { status: "sent" | "delivered" | "read" | null }) {
+  if (!status) return null;
+
+  if (status === "read") {
+    return <CheckCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+  }
+  if (status === "delivered") {
+    return <CheckCheck className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+  }
+  return <Check className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+}
+
+// Truncate text to a maximum length
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
 }
 
 interface ConversationListProps {
@@ -132,15 +154,15 @@ export function ConversationList({
                 <button
                   onClick={() => onSelect(conv.id)}
                   className={cn(
-                    "w-full px-4 py-2.5 text-right transition-all duration-150 border-b border-border",
+                    "w-full px-4 py-3 text-right transition-all duration-150 border-b border-border",
                     "hover:bg-muted/50 focus:outline-none focus:bg-muted/50",
                     selectedId === conv.id && "bg-muted/80"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    {/* Avatar */}
+                  <div className="flex items-start gap-3 overflow-hidden">
+                    {/* Right side (in RTL) - Avatar */}
                     <div className="relative shrink-0">
-                      <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
+                      <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
                         <AvatarFallback
                           className={cn(
                             "text-sm font-medium",
@@ -159,9 +181,9 @@ export function ConversationList({
                       )}
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Header row */}
+                    {/* Center - Content */}
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      {/* First row: Name + badges + time */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="font-medium text-sm truncate text-foreground">
@@ -176,47 +198,67 @@ export function ConversationList({
                               רשום
                             </Badge>
                           )}
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {conv.unreadCount > 0 && (
-                            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
-                              {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                            </span>
+                          {conv.status === "closed" && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 text-[9px] px-1.5 shrink-0"
+                            >
+                              סגור
+                            </Badge>
+                          )}
+                          {conv.movedToWhatsapp && (
+                            <Badge
+                              className="h-4 text-[9px] px-1.5 bg-emerald-500/10 text-emerald-600 border-0 shrink-0"
+                            >
+                              WA
+                            </Badge>
                           )}
                         </div>
-                      </div>
-
-                      {/* Message preview */}
-                      <p className={cn(
-                        "text-[13px] truncate",
-                        conv.unreadCount > 0
-                          ? "text-foreground font-medium"
-                          : "text-muted-foreground"
-                      )}>
-                        {conv.lastMessagePreview || "שיחה חדשה"}
-                      </p>
-
-                      {/* Bottom row - time and status */}
-                      <div className="flex items-center gap-1.5 mt-0.5">
                         {conv.lastMessageAt && (
-                          <span className="text-[11px] text-muted-foreground">
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                             {formatRelativeTime(conv.lastMessageAt)}
                           </span>
                         )}
-                        {conv.status === "closed" && (
-                          <Badge
-                            variant="outline"
-                            className="h-4 text-[9px] px-1"
-                          >
-                            סגור
-                          </Badge>
-                        )}
-                        {conv.movedToWhatsapp && (
-                          <Badge
-                            className="h-4 text-[9px] px-1 bg-emerald-500/10 text-emerald-600 border-0"
-                          >
-                            WA
-                          </Badge>
+                      </div>
+
+                      {/* Second row: Message preview + unread count */}
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <div className="flex items-center gap-1">
+                          {/* Show status only for agent messages */}
+                          {conv.lastMessageSenderType === "agent" && (
+                            <MessageStatusIndicator status={conv.lastMessageStatus} />
+                          )}
+                          {(conv.lastMessagePreview?.length || 0) > 30 ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn(
+                                  "text-[13px] cursor-default",
+                                  conv.unreadCount > 0
+                                    ? "text-foreground font-medium"
+                                    : "text-muted-foreground"
+                                )}>
+                                  {truncateText(conv.lastMessagePreview || "שיחה חדשה", 30)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-[300px] text-right">
+                                {conv.lastMessagePreview}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className={cn(
+                              "text-[13px]",
+                              conv.unreadCount > 0
+                                ? "text-foreground font-medium"
+                                : "text-muted-foreground"
+                            )}>
+                              {conv.lastMessagePreview || "שיחה חדשה"}
+                            </span>
+                          )}
+                        </div>
+                        {conv.unreadCount > 0 && (
+                          <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0">
+                            {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                          </span>
                         )}
                       </div>
                     </div>

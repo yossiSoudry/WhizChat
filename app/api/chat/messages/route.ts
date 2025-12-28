@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
 
     const { conversationId, after, limit } = validatedData;
 
+    // Check if request is from customer (widget) - if so, mark agent messages as delivered
+    const viewerType = searchParams.get("viewerType"); // "customer" or "agent"
+
     // Verify conversation exists
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -45,15 +48,56 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get messages
+    // Get messages with explicit field selection
     const messages = await prisma.message.findMany({
       where: whereClause,
       orderBy: { createdAt: "asc" },
       take: limit + 1, // Get one extra to check if there are more
+      select: {
+        id: true,
+        content: true,
+        senderType: true,
+        senderName: true,
+        source: true,
+        createdAt: true,
+        status: true,
+      },
     });
 
     const hasMore = messages.length > limit;
     const returnMessages = hasMore ? messages.slice(0, -1) : messages;
+
+    // Update message status (non-blocking - don't fail if this errors)
+    try {
+      if (viewerType === "customer") {
+        // Mark agent messages as "delivered" when customer views
+        await prisma.message.updateMany({
+          where: {
+            conversationId,
+            senderType: "agent",
+            status: "sent",
+          },
+          data: {
+            status: "delivered",
+          },
+        });
+      } else if (viewerType === "agent") {
+        // Mark customer messages as "delivered" when agent views
+        await prisma.message.updateMany({
+          where: {
+            conversationId,
+            senderType: "customer",
+            status: "sent",
+          },
+          data: {
+            status: "delivered",
+          },
+        });
+      }
+    } catch (statusError) {
+      // Log but don't fail the request - message retrieval is more important
+      console.error("Failed to update message status:", statusError);
+    }
 
     return NextResponse.json({
       messages: returnMessages,

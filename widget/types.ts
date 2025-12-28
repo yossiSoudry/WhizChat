@@ -5,6 +5,7 @@ export interface Message {
   senderName: string | null;
   source: "widget" | "dashboard" | "whatsapp";
   createdAt: string;
+  status?: "sent" | "delivered" | "read";
 }
 
 export interface FAQItem {

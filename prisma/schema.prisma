@@ -45,6 +45,12 @@ enum WAMessageStatus {
   failed
 }
 
+enum MessageStatus {
+  sent
+  delivered
+  read
+}
+
 enum AgentRole {
   admin
   agent
@@ -126,6 +132,9 @@ model Message {
 
   // Source
   source MessageSource
+
+  // Message status (WhatsApp-style: sent, delivered, read)
+  status MessageStatus @default(sent)
 
   // WhatsApp specific
   waMessageId String?         @map("wa_message_id")

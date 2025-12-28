@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { ConversationList } from "@/components/dashboard/conversation-list";
 import { ChatView } from "@/components/dashboard/chat-view";
 import { AgentPresence } from "@/components/dashboard/agent-presence";
-import { MessageSquare, MessageCircle, Wifi, MailOpen, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { MessageSquare, MessageCircle, Wifi, Mail, Clock, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-more";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useSidebar } from "@/components/ui/sidebar";
 
 // TODO: Replace with actual agent ID from auth
 const TEMP_AGENT_ID = "temp-agent-id";
@@ -49,6 +51,8 @@ export default function ConversationsPage() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const { setOpenMobile } = useSidebar();
 
   const checkScrollButtons = useCallback(() => {
     if (filtersRef.current) {
@@ -104,12 +108,12 @@ export default function ConversationsPage() {
     fetchFilterCounts();
   }, [fetchConversations, fetchFilterCounts, activeFilter]);
 
-  // Poll for new conversations and counts every 5 seconds
+  // Poll for new conversations and counts every 15 seconds (reduced from 5s)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchConversations(activeFilter);
       fetchFilterCounts();
-    }, 5000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [fetchConversations, fetchFilterCounts, activeFilter]);
 
@@ -118,17 +122,44 @@ export default function ConversationsPage() {
     setIsLoading(true);
   };
 
+  // Stable callback for when a conversation is read
+  const handleConversationRead = useCallback(() => {
+    fetchConversations(activeFilter);
+    fetchFilterCounts();
+  }, [fetchConversations, fetchFilterCounts, activeFilter]);
+
+  // Handle mobile chat selection
+  const handleSelectConversation = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
+
+  // Handle going back from chat view on mobile
+  const handleBackToList = useCallback(() => {
+    setSelectedId(null);
+  }, []);
+
   return (
     <div className="flex h-full">
       {/* Agent presence heartbeat */}
       <AgentPresence agentId={TEMP_AGENT_ID} />
 
-      {/* Conversations List Panel */}
-      <div className="w-[340px] shrink-0 border-l bg-card flex flex-col h-full overflow-hidden">
+      {/* Conversations List Panel - hidden on mobile when chat is selected */}
+      <div className={cn(
+        "shrink-0 border-l bg-card flex flex-col h-full overflow-hidden",
+        "w-full md:w-[340px]",
+        isMobile && selectedId && "hidden"
+      )}>
         {/* Header */}
         <div className="shrink-0 border-b">
-          <div className="h-14 flex items-center px-4">
+          <div className="h-14 flex items-center px-4 justify-between">
             <div className="flex items-center gap-2">
+              {/* Hamburger menu for mobile */}
+              <button
+                onClick={() => setOpenMobile(true)}
+                className="md:hidden w-8 h-8 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
+              >
+                <Menu className="w-4 h-4 text-muted-foreground" />
+              </button>
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <MessageCircle className="w-4 h-4 text-primary" />
               </div>
@@ -172,7 +203,7 @@ export default function ConversationsPage() {
                     "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
                     activeFilter === "all"
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
+                      : "text-muted-foreground bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-border"
                   )}
                 >
                   <MessageCircleMore className="w-3.5 h-3.5 shrink-0" />
@@ -186,7 +217,7 @@ export default function ConversationsPage() {
                     "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
                     activeFilter === "active"
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
+                      : "text-muted-foreground bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-border"
                   )}
                 >
                   <Wifi className="w-3.5 h-3.5 shrink-0" />
@@ -205,10 +236,10 @@ export default function ConversationsPage() {
                     "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
                     activeFilter === "unread"
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
+                      : "text-muted-foreground bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-border"
                   )}
                 >
-                  <MailOpen className="w-3.5 h-3.5 shrink-0" />
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
                   לא נקראו
                   {filterCounts.unreadCount > 0 && (
                     <span className="absolute -top-1.5 -left-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-[10px] font-medium shadow-sm">
@@ -224,7 +255,7 @@ export default function ConversationsPage() {
                     "relative flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
                     activeFilter === "unanswered"
                       ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:bg-muted"
+                      : "text-muted-foreground bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-border"
                   )}
                 >
                   <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -261,22 +292,28 @@ export default function ConversationsPage() {
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleSelectConversation}
             isLoading={isLoading}
           />
         </div>
       </div>
 
-      {/* Chat View Panel */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Chat View Panel - full width on mobile when selected */}
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0",
+        isMobile && !selectedId && "hidden",
+        isMobile && selectedId && "w-full"
+      )}>
         {selectedId ? (
           <ChatView
             conversationId={selectedId}
-            onClose={() => setSelectedId(null)}
+            onClose={handleBackToList}
             onStatusChange={() => fetchConversations(activeFilter)}
+            onRead={handleConversationRead}
+            showBackButton={isMobile}
           />
         ) : (
-          <EmptyState />
+          !isMobile && <EmptyState />
         )}
       </div>
     </div>

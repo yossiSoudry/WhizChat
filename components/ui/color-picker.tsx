@@ -1236,7 +1236,7 @@ function ColorPickerInput(props: ColorPickerInputProps) {
 }
 
 const inputGroupItemVariants = cva(
-  "h-8 [-moz-appearance:textfield] focus-visible:z-10 focus-visible:ring-1 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none",
+  "[-moz-appearance:textfield] focus-visible:z-10 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none",
   {
     variants: {
       position: {
@@ -1259,12 +1259,25 @@ interface InputGroupItemProps
 function InputGroupItem({
   className,
   position,
+  style,
   ...props
-}: InputGroupItemProps) {
+}: InputGroupItemProps & { style?: React.CSSProperties }) {
   return (
-    <Input
+    <input
       data-slot="color-picker-input"
-      className={cn(inputGroupItemVariants({ position, className }))}
+      className={cn(
+        "flex h-8 w-full rounded-md border border-input px-3 py-1 text-sm shadow-sm transition-colors",
+        "placeholder:text-muted-foreground",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        inputGroupItemVariants({ position }),
+        className
+      )}
+      style={{
+        backgroundColor: 'var(--card)',
+        color: 'var(--card-foreground)',
+        ...style
+      }}
       {...props}
     />
   );

@@ -22,7 +22,10 @@ function formatTime(dateString: string): string {
   });
 }
 
-// Message status icons
+// Message status icons (WhatsApp style)
+// - Single check: message sent
+// - Double check (gray): message delivered
+// - Double check (blue): message read
 function CheckIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -38,6 +41,16 @@ function DoubleCheckIcon({ read = false }: { read?: boolean }) {
       <polyline points="22 6 13 17" />
     </svg>
   );
+}
+
+function MessageStatusIcon({ status }: { status?: "sent" | "delivered" | "read" }) {
+  if (status === "read") {
+    return <DoubleCheckIcon read />;
+  }
+  if (status === "delivered") {
+    return <DoubleCheckIcon />;
+  }
+  return <CheckIcon />;
 }
 
 export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
@@ -106,6 +119,16 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         setIsOnline(data.settings.isOnline);
         setWelcomeMessage(data.settings.welcomeMessage);
         setFaqItems(data.settings.faqItems || []);
+
+        // Mark agent messages as read by customer
+        await fetch(`${apiUrl}/api/chat/read`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: data.conversation.id,
+            readerType: "customer",
+          }),
+        });
       }
     } catch (error) {
       console.error("Failed to init chat:", error);
@@ -121,7 +144,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }, [isOpen, conversationId, initChat]);
 
-  // Poll for new messages
+  // Poll for new messages and status updates
   const fetchNewMessages = useCallback(async () => {
     if (!conversationId || !isOpen) return;
 
@@ -129,12 +152,16 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
       const lastMessage = messages[messages.length - 1];
       const afterParam = lastMessage ? `&after=${lastMessage.id}` : "";
       const res = await fetch(
-        `${apiUrl}/api/chat/messages?conversationId=${conversationId}${afterParam}`
+        `${apiUrl}/api/chat/messages?conversationId=${conversationId}${afterParam}&viewerType=customer`
       );
 
       if (res.ok) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
+          const newAgentMessages = data.messages.filter(
+            (m: Message) => m.senderType === "agent"
+          );
+
           setMessages((prev) => {
             const existingIds = new Set(prev.map((m) => m.id));
             const newMessages = data.messages.filter(
@@ -142,6 +169,18 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
             );
             return [...prev, ...newMessages];
           });
+
+          // Mark new agent messages as read
+          if (newAgentMessages.length > 0) {
+            await fetch(`${apiUrl}/api/chat/read`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                conversationId,
+                readerType: "customer",
+              }),
+            });
+          }
         }
       }
     } catch (error) {
@@ -149,13 +188,50 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }, [apiUrl, conversationId, isOpen, messages]);
 
-  // Polling interval for messages
+  // Sync message statuses (to get read receipts)
+  const syncMessageStatuses = useCallback(async () => {
+    if (!conversationId || !isOpen || messages.length === 0) return;
+
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/chat/messages?conversationId=${conversationId}&viewerType=customer`
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && data.messages.length > 0) {
+          // Update status of existing messages
+          setMessages((prev) =>
+            prev.map((msg) => {
+              const updated = data.messages.find((m: Message) => m.id === msg.id);
+              if (updated && updated.status !== msg.status) {
+                return { ...msg, status: updated.status };
+              }
+              return msg;
+            })
+          );
+        }
+      }
+    } catch (error) {
+      // Silent fail for status sync
+    }
+  }, [apiUrl, conversationId, isOpen, messages.length]);
+
+  // Polling interval for new messages (3 seconds)
   useEffect(() => {
     if (!isOpen || !conversationId) return;
 
     const interval = setInterval(fetchNewMessages, 3000);
     return () => clearInterval(interval);
   }, [isOpen, conversationId, fetchNewMessages]);
+
+  // Polling interval for status sync (5 seconds)
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    const interval = setInterval(syncMessageStatuses, 5000);
+    return () => clearInterval(interval);
+  }, [isOpen, conversationId, syncMessageStatuses]);
 
   // Check if agent is typing
   const checkAgentTyping = useCallback(async () => {
@@ -262,6 +338,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
       senderName: userName || null,
       source: "widget",
       createdAt: new Date().toISOString(),
+      status: "sent",
     };
 
     setMessages((prev) => [...prev, tempMessage]);
@@ -991,7 +1068,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                         <span className="wc-message-time">{formatTime(msg.createdAt)}</span>
                         {msg.senderType === 'customer' && (
                           <span className="wc-message-status">
-                            <CheckIcon />
+                            <MessageStatusIcon status={msg.status} />
                           </span>
                         )}
                       </div>

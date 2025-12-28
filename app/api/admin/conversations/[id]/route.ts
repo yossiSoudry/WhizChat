@@ -15,6 +15,17 @@ export async function GET(
       include: {
         messages: {
           orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            content: true,
+            senderType: true,
+            senderName: true,
+            source: true,
+            createdAt: true,
+            status: true,
+            waStatus: true,
+            waMessageId: true,
+          },
         },
       },
     });

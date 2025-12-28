@@ -24,6 +24,7 @@ import { ChartLine } from "@/components/animate-ui/icons/chart-line";
 import { Users } from "@/components/animate-ui/icons/users";
 import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-more";
 import { cn } from "@/lib/utils";
+import { MobileHeader } from "@/components/dashboard/mobile-header";
 
 interface AnalyticsData {
   overview: {
@@ -252,22 +253,30 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <Fade inView>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ChartLine className="w-5 h-5 text-primary" />
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <MobileHeader
+        title="סטטיסטיקות"
+        subtitle="סקירה כללית"
+        icon={<ChartLine className="w-5 h-5 text-primary" />}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+          {/* Header - hidden on mobile */}
+          <Fade inView className="hidden md:block">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <ChartLine className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">סטטיסטיקות</h1>
+                <p className="text-muted-foreground text-sm">
+                  סקירה כללית של פעילות המערכת
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">סטטיסטיקות</h1>
-              <p className="text-muted-foreground text-sm">
-                סקירה כללית של פעילות המערכת
-              </p>
-            </div>
-          </div>
-        </Fade>
+          </Fade>
 
         {/* Overview Stats */}
         <Fade inView delay={50}>
@@ -445,6 +454,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </Fade>
+        </div>
       </div>
     </div>
   );

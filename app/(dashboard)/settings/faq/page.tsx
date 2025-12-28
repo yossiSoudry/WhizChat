@@ -46,7 +46,9 @@ import { Trash } from "@/components/animate-ui/icons/trash";
 import { X } from "@/components/animate-ui/icons/x";
 import { ChevronDown } from "@/components/animate-ui/icons/chevron-down";
 import { ChevronUp } from "@/components/animate-ui/icons/chevron-up";
+import { MessageCircleQuestion } from "@/components/animate-ui/icons/message-circle-question";
 import { cn } from "@/lib/utils";
+import { MobileHeader } from "@/components/dashboard/mobile-header";
 
 interface FAQItem {
   id: string;
@@ -408,32 +410,52 @@ export default function FAQPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <Fade inView>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <HelpCircle className="w-5 h-5 text-primary" />
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <MobileHeader
+        title="שאלות נפוצות"
+        subtitle="ניהול FAQ"
+        icon={<MessageCircleQuestion className="w-5 h-5 text-primary" />}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          {/* Header - hidden on mobile */}
+          <Fade inView className="hidden md:block">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <HelpCircle className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">שאלות נפוצות</h1>
+                  <p className="text-muted-foreground text-sm">
+                    נהל את השאלות הנפוצות שמוצגות ללקוחות בצ'אט
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">שאלות נפוצות</h1>
-                <p className="text-muted-foreground text-sm">
-                  נהל את השאלות הנפוצות שמוצגות ללקוחות בצ'אט
-                </p>
-              </div>
+              {!isCreating && (
+                <AnimateIcon animateOnHover asChild>
+                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    הוסף שאלה
+                  </Button>
+                </AnimateIcon>
+              )}
             </div>
-            {!isCreating && (
+          </Fade>
+
+          {/* Mobile add button */}
+          {!isCreating && (
+            <div className="md:hidden">
               <AnimateIcon animateOnHover asChild>
-                <Button onClick={() => setIsCreating(true)} className="gap-2">
+                <Button onClick={() => setIsCreating(true)} className="gap-2 w-full">
                   <Plus className="w-4 h-4" />
                   הוסף שאלה
                 </Button>
               </AnimateIcon>
-            )}
-          </div>
-        </Fade>
+            </div>
+          )}
 
         {/* Stats */}
         {items.length > 0 && (
@@ -590,6 +612,7 @@ export default function FAQPage() {
             </DndContext>
           )}
         </Fade>
+        </div>
       </div>
     </div>
   );

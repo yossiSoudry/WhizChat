@@ -39,6 +39,7 @@ import { Trash } from "@/components/animate-ui/icons/trash";
 import { X } from "@/components/animate-ui/icons/x";
 import { cn } from "@/lib/utils";
 import { RelativeTimeCard } from "@/components/ui/relative-time-card";
+import { MobileHeader } from "@/components/dashboard/mobile-header";
 
 interface Agent {
   id: string;
@@ -142,26 +143,55 @@ function AgentCard({
         </CardContent>
       ) : (
         <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="relative">
-              <Avatar className="size-14 border-2 border-border">
-                <AvatarFallback className="bg-brand-gradient text-white text-lg font-medium">
-                  {getInitials(agent.name)}
-                </AvatarFallback>
-              </Avatar>
-              {/* Online indicator */}
-              <span
-                className={cn(
-                  "absolute bottom-0 right-0 size-4 rounded-full border-2 border-background",
-                  agent.isOnline ? "bg-emerald-500" : "bg-muted-foreground"
-                )}
-              />
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            {/* Top row on mobile: Avatar + Actions */}
+            <div className="flex items-start justify-between sm:contents">
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                <Avatar className="size-14 border-2 border-border">
+                  <AvatarFallback className="bg-brand-gradient text-white text-lg font-medium">
+                    {getInitials(agent.name)}
+                  </AvatarFallback>
+                </Avatar>
+                {/* Online indicator */}
+                <span
+                  className={cn(
+                    "absolute bottom-0 right-0 size-4 rounded-full border-2 border-background",
+                    agent.isOnline ? "bg-emerald-500" : "bg-muted-foreground"
+                  )}
+                />
+              </div>
+
+              {/* Actions - visible in top row on mobile */}
+              <div className="flex items-center gap-1 shrink-0 sm:hidden">
+                <Switch
+                  checked={agent.isActive}
+                  onCheckedChange={onToggleActive}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onEdit}
+                  className="h-8 w-8"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <AnimateIcon animateOnHover asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onDelete}
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </AnimateIcon>
+              </div>
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-semibold text-foreground truncate">
                   {agent.name}
                 </h3>
@@ -184,11 +214,11 @@ function AgentCard({
               </div>
 
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-                <Mail className="w-3.5 h-3.5" />
+                <Mail className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate" dir="ltr">{agent.email}</span>
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   הצטרף{" "}
@@ -204,8 +234,8 @@ function AgentCard({
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1 shrink-0">
+            {/* Actions - hidden on mobile, visible on sm+ */}
+            <div className="hidden sm:flex items-center gap-1 shrink-0">
               <Switch
                 checked={agent.isActive}
                 onCheckedChange={onToggleActive}
@@ -382,32 +412,52 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <Fade inView>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <MobileHeader
+        title="נציגים"
+        subtitle="ניהול נציגים"
+        icon={<Users className="w-5 h-5 text-primary" />}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          {/* Header - hidden on mobile */}
+          <Fade inView className="hidden md:block">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">נציגים</h1>
+                  <p className="text-muted-foreground text-sm">
+                    נהל את הנציגים וההרשאות שלהם
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">נציגים</h1>
-                <p className="text-muted-foreground text-sm">
-                  נהל את הנציגים וההרשאות שלהם
-                </p>
-              </div>
+              {!isCreating && (
+                <AnimateIcon animateOnHover asChild>
+                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    הוסף נציג
+                  </Button>
+                </AnimateIcon>
+              )}
             </div>
-            {!isCreating && (
+          </Fade>
+
+          {/* Mobile add button */}
+          {!isCreating && (
+            <div className="md:hidden">
               <AnimateIcon animateOnHover asChild>
-                <Button onClick={() => setIsCreating(true)} className="gap-2">
+                <Button onClick={() => setIsCreating(true)} className="gap-2 w-full">
                   <Plus className="w-4 h-4" />
                   הוסף נציג
                 </Button>
               </AnimateIcon>
-            )}
-          </div>
-        </Fade>
+            </div>
+          )}
 
         {/* Stats */}
         {agents.length > 0 && (
@@ -577,6 +627,7 @@ export default function AgentsPage() {
             </div>
           )}
         </Fade>
+        </div>
       </div>
     </div>
   );

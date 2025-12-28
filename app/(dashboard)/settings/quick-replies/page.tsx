@@ -47,7 +47,9 @@ import { Trash } from "@/components/animate-ui/icons/trash";
 import { X } from "@/components/animate-ui/icons/x";
 import { ChevronDown } from "@/components/animate-ui/icons/chevron-down";
 import { ChevronUp } from "@/components/animate-ui/icons/chevron-up";
+import { MessageSquareMore } from "@/components/animate-ui/icons/message-square-more";
 import { cn } from "@/lib/utils";
+import { MobileHeader } from "@/components/dashboard/mobile-header";
 
 interface QuickReply {
   id: string;
@@ -428,32 +430,52 @@ export default function QuickRepliesPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <Fade inView>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-500" />
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <MobileHeader
+        title="תשובות מהירות"
+        subtitle="תבניות תשובה"
+        icon={<MessageSquareMore className="w-5 h-5 text-amber-500" />}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          {/* Header - hidden on mobile */}
+          <Fade inView className="hidden md:block">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">תשובות מהירות</h1>
+                  <p className="text-muted-foreground text-sm">
+                    תשובות מוכנות מראש לשימוש מהיר בצ'אט
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">תשובות מהירות</h1>
-                <p className="text-muted-foreground text-sm">
-                  תשובות מוכנות מראש לשימוש מהיר בצ'אט
-                </p>
-              </div>
+              {!isCreating && (
+                <AnimateIcon animateOnHover asChild>
+                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    הוסף תשובה מהירה
+                  </Button>
+                </AnimateIcon>
+              )}
             </div>
-            {!isCreating && (
+          </Fade>
+
+          {/* Mobile add button */}
+          {!isCreating && (
+            <div className="md:hidden">
               <AnimateIcon animateOnHover asChild>
-                <Button onClick={() => setIsCreating(true)} className="gap-2">
+                <Button onClick={() => setIsCreating(true)} className="gap-2 w-full">
                   <Plus className="w-4 h-4" />
                   הוסף תשובה מהירה
                 </Button>
               </AnimateIcon>
-            )}
-          </div>
-        </Fade>
+            </div>
+          )}
 
         {/* Usage Tip */}
         <Fade inView delay={50}>
@@ -647,6 +669,7 @@ export default function QuickRepliesPage() {
             </DndContext>
           )}
         </Fade>
+        </div>
       </div>
     </div>
   );

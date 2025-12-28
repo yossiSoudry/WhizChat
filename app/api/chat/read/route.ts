@@ -21,24 +21,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update read timestamp
-    const updateData: {
-      lastReadAtCustomer?: Date;
-      lastReadAtAgent?: Date;
-      unreadCount?: number;
-    } = {};
+    const now = new Date();
 
     if (readerType === "customer") {
-      updateData.lastReadAtCustomer = new Date();
-    } else {
-      updateData.lastReadAtAgent = new Date();
-      updateData.unreadCount = 0; // Reset unread count when agent reads
-    }
+      // Mark all agent messages as "read" by customer
+      await prisma.message.updateMany({
+        where: {
+          conversationId,
+          senderType: "agent",
+          status: { in: ["sent", "delivered"] },
+        },
+        data: {
+          status: "read",
+        },
+      });
 
-    await prisma.conversation.update({
-      where: { id: conversationId },
-      data: updateData,
-    });
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: { lastReadAtCustomer: now },
+      });
+    } else {
+      // Mark all customer messages as "read" by agent
+      await prisma.message.updateMany({
+        where: {
+          conversationId,
+          senderType: "customer",
+          status: { in: ["sent", "delivered"] },
+        },
+        data: {
+          status: "read",
+        },
+      });
+
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          lastReadAtAgent: now,
+          unreadCount: 0,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

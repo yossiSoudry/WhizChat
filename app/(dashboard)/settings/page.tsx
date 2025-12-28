@@ -53,6 +53,8 @@ import {
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 import { Clock } from "@/components/animate-ui/icons/clock";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { SlidersHorizontal } from "@/components/animate-ui/icons/sliders-horizontal";
+import { MobileHeader } from "@/components/dashboard/mobile-header";
 
 interface Settings {
   business_hours: {
@@ -252,19 +254,44 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <Fade inView>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">הגדרות</h1>
-              <p className="text-muted-foreground mt-1">
-                נהל את הגדרות המערכת והעדפות הצ'אט
-              </p>
+    <div className="h-full flex flex-col">
+      {/* Mobile Header */}
+      <MobileHeader
+        title="הגדרות"
+        subtitle="הגדרות מערכת"
+        icon={<SlidersHorizontal className="w-5 h-5 text-primary" />}
+      />
+
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-5xl mx-auto p-6 space-y-6">
+          {/* Header - hidden on mobile */}
+          <Fade inView className="hidden md:block">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">הגדרות</h1>
+                <p className="text-muted-foreground mt-1">
+                  נהל את הגדרות המערכת והעדפות הצ'אט
+                </p>
+              </div>
+              <AnimateIcon animateOnHover asChild>
+                <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : saveSuccess ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {saveSuccess ? "נשמר!" : "שמור שינויים"}
+                </Button>
+              </AnimateIcon>
             </div>
+          </Fade>
+
+          {/* Mobile save button */}
+          <div className="md:hidden">
             <AnimateIcon animateOnHover asChild>
-              <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+              <Button onClick={handleSave} disabled={isSaving} className="gap-2 w-full">
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : saveSuccess ? (
@@ -276,7 +303,6 @@ export default function SettingsPage() {
               </Button>
             </AnimateIcon>
           </div>
-        </Fade>
 
         {/* Tabs */}
         <Fade inView delay={100}>
@@ -780,6 +806,7 @@ export default function SettingsPage() {
             </TabsContents>
           </Tabs>
         </Fade>
+        </div>
       </div>
     </div>
   );

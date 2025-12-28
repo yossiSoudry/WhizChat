@@ -162,9 +162,16 @@ function UserNav() {
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Close sidebar on mobile when clicking a link
+  const handleLinkClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -197,7 +204,7 @@ export function AppSidebar() {
               tooltip={isCollapsed ? "WhizChat" : undefined}
               className="h-10"
             >
-              <Link href="/">
+              <Link href="/" onClick={handleLinkClick}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-sm">
                   <MessageCircle className="size-4" />
                 </div>
@@ -236,7 +243,7 @@ export function AppSidebar() {
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
                       >
-                        <Link href={item.href} className="flex items-center gap-2 w-full">
+                        <Link href={item.href} className="flex items-center gap-2 w-full" onClick={handleLinkClick}>
                           <div className="relative shrink-0">
                             <item.icon className="size-4" />
                             {showBadge && isCollapsed && (
@@ -277,7 +284,7 @@ export function AppSidebar() {
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
                       >
-                        <Link href={item.href}>
+                        <Link href={item.href} onClick={handleLinkClick}>
                           <item.icon className="size-4" />
                           <span>{item.name}</span>
                         </Link>
