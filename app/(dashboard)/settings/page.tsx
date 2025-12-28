@@ -49,7 +49,11 @@ import {
   MessageCircle,
   Archive,
   CheckCircle2,
+  Download,
+  Smartphone,
+  Share,
 } from "lucide-react";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 import { Clock } from "@/components/animate-ui/icons/clock";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
@@ -139,6 +143,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
 
   useEffect(() => {
     fetchSettings();
@@ -307,7 +312,7 @@ export default function SettingsPage() {
         {/* Tabs */}
         <Fade inView delay={100}>
           <Tabs defaultValue="hours" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 h-12">
+            <TabsList className="grid w-full grid-cols-6 h-12">
               <TabsTrigger value="hours" className="gap-2">
                 <Clock className="w-4 h-4" />
                 <span className="hidden sm:inline">שעות פעילות</span>
@@ -327,6 +332,10 @@ export default function SettingsPage() {
               <TabsTrigger value="archive" className="gap-2">
                 <Archive className="w-4 h-4" />
                 <span className="hidden sm:inline">ארכיון</span>
+              </TabsTrigger>
+              <TabsTrigger value="app" className="gap-2">
+                <Smartphone className="w-4 h-4" />
+                <span className="hidden sm:inline">אפליקציה</span>
               </TabsTrigger>
             </TabsList>
 
@@ -800,6 +809,106 @@ export default function SettingsPage() {
                       </div>
                     </Fade>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* App Tab */}
+            <TabsContent value="app">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-primary" />
+                    התקנת אפליקציה
+                  </CardTitle>
+                  <CardDescription>
+                    התקן את WhizChat כאפליקציה במכשיר שלך לגישה מהירה
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isInstalled ? (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+                      <CheckCircle2 className="w-6 h-6 text-green-500" />
+                      <div>
+                        <p className="font-medium text-green-700 dark:text-green-400">האפליקציה מותקנת!</p>
+                        <p className="text-sm text-muted-foreground">
+                          WhizChat מותקנת במכשיר שלך
+                        </p>
+                      </div>
+                    </div>
+                  ) : isIOS ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
+                        <Share className="w-6 h-6 text-primary mt-0.5" />
+                        <div className="space-y-2">
+                          <p className="font-medium">התקנה באייפון/אייפד</p>
+                          <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                            <li>לחץ על כפתור השיתוף <Share className="w-4 h-4 inline mx-1" /> בסרגל הדפדפן</li>
+                            <li>גלול למטה ובחר "הוסף למסך הבית"</li>
+                            <li>לחץ "הוסף" בפינה הימנית העליונה</li>
+                          </ol>
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-xl border border-dashed border-muted-foreground/30 text-center">
+                        <Smartphone className="w-12 h-12 mx-auto mb-2 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">
+                          לאחר ההתקנה, האפליקציה תופיע במסך הבית שלך
+                        </p>
+                      </div>
+                    </div>
+                  ) : isInstallable ? (
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
+                        <Download className="w-6 h-6 text-primary mt-0.5" />
+                        <div>
+                          <p className="font-medium">התקנה מהירה</p>
+                          <p className="text-sm text-muted-foreground">
+                            לחץ על הכפתור למטה להתקנת האפליקציה במכשיר שלך
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={install}
+                        size="lg"
+                        className="w-full gap-2"
+                      >
+                        <Download className="w-5 h-5" />
+                        התקן אפליקציה
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-muted/50">
+                      <Smartphone className="w-6 h-6 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="font-medium">התקנה לא זמינה</p>
+                        <p className="text-sm text-muted-foreground">
+                          פתח את האתר בדפדפן Chrome או Edge כדי להתקין את האפליקציה
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t">
+                    <h4 className="font-medium mb-3">יתרונות האפליקציה</h4>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        גישה מהירה ישירות ממסך הבית
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        חוויה דומה לאפליקציה מותקנת
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        עובדת במצב מסך מלא
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        התראות על הודעות חדשות
+                      </li>
+                    </ul>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

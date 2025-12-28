@@ -33,6 +33,8 @@ interface Conversation {
   unreadCount: number;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
+  lastMessageSenderType: "customer" | "agent" | "system" | null;
+  lastMessageStatus: "sent" | "delivered" | "read" | null;
   movedToWhatsapp: boolean;
   createdAt: string;
   isCustomerOnline: boolean;
