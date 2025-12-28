@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { markReadSchema } from "@/lib/validations/chat";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +20,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!conversation) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Conversation not found" },
         { status: 404 }
       );
@@ -62,18 +67,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return corsResponse({ success: true });
   } catch (error) {
     console.error("Mark read error:", error);
 
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Invalid request data" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to mark as read" },
       { status: 500 }
     );

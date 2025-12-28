@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getMessagesSchema } from "@/lib/validations/chat";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!conversation) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Conversation not found" },
         { status: 404 }
       );
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
       console.error("Failed to update message status:", statusError);
     }
 
-    return NextResponse.json({
+    return corsResponse({
       messages: returnMessages,
       hasMore,
     });
@@ -107,13 +112,13 @@ export async function GET(request: NextRequest) {
     console.error("Get messages error:", error);
 
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Invalid request data" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to get messages" },
       { status: 500 }
     );

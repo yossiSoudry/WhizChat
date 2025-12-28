@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { chatInitSchema } from "@/lib/validations/chat";
 import { isWithinBusinessHours } from "@/lib/business-hours";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,7 +129,7 @@ export async function POST(request: NextRequest) {
       offline: string;
     } | null;
 
-    return NextResponse.json({
+    return corsResponse({
       conversation: {
         id: conversation.id,
         status: conversation.status,
@@ -157,13 +162,13 @@ export async function POST(request: NextRequest) {
     console.error("Chat init error:", error);
 
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Invalid request data" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to initialize chat" },
       { status: 500 }
     );

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendMessageSchema } from "@/lib/validations/chat";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +23,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingMessage) {
-      return NextResponse.json({
+      return corsResponse({
         message: existingMessage,
         deduplicated: true,
         waSent: false,
@@ -31,14 +36,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!conversation) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Conversation not found" },
         { status: 404 }
       );
     }
 
     if (conversation.isArchived) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Conversation is archived" },
         { status: 400 }
       );
@@ -84,7 +89,7 @@ export async function POST(request: NextRequest) {
     //   waSent = await sendToWhatsAppBusiness(conversation, message);
     // }
 
-    return NextResponse.json({
+    return corsResponse({
       message,
       deduplicated: false,
       waSent,
@@ -93,13 +98,13 @@ export async function POST(request: NextRequest) {
     console.error("Send message error:", error);
 
     if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Invalid request data" },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to send message" },
       { status: 500 }
     );
