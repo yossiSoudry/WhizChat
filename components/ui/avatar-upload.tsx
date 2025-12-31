@@ -1,9 +1,23 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
+import {
+  Cropper,
+  CropperImage,
+  CropperArea,
+  type CropperAreaData,
+} from "@/components/ui/cropper";
+import { Camera, Loader2, Trash2, ZoomIn, ZoomOut, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AvatarUploadProps {
@@ -42,6 +56,60 @@ const iconSizeClasses = {
   lg: "w-4 h-4",
 };
 
+// Create cropped image from original
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: CropperAreaData
+): Promise<Blob> {
+  const image = new Image();
+  image.crossOrigin = "anonymous";
+
+  await new Promise((resolve, reject) => {
+    image.onload = resolve;
+    image.onerror = reject;
+    image.src = imageSrc;
+  });
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error("No 2d context");
+  }
+
+  // Set canvas size to desired crop size
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // Draw the cropped image
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  // Convert to blob
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Canvas is empty"));
+        }
+      },
+      "image/jpeg",
+      0.9
+    );
+  });
+}
+
 export function AvatarUpload({
   avatarUrl,
   name,
@@ -52,9 +120,20 @@ export function AvatarUpload({
 }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropperAreaData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  const onCropComplete = useCallback(
+    (_croppedArea: CropperAreaData, croppedAreaPixels: CropperAreaData) => {
+      setCroppedAreaPixels(croppedAreaPixels);
+    },
+    []
+  );
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -68,17 +147,35 @@ export function AvatarUpload({
       return;
     }
 
-    const maxSize = 2 * 1024 * 1024; // 2MB
+    const maxSize = 5 * 1024 * 1024; // 5MB for original (will be cropped)
     if (file.size > maxSize) {
-      alert("גודל הקובץ חייב להיות עד 2MB");
+      alert("גודל הקובץ חייב להיות עד 5MB");
       return;
     }
 
+    // Read file and open crop dialog
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageSrc(reader.result as string);
+      setZoom(1);
+      setIsCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleCropConfirm() {
+    if (!imageSrc || !croppedAreaPixels) return;
+
     setIsUploading(true);
+    setIsCropDialogOpen(false);
 
     try {
+      // Get cropped image blob
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+
+      // Create form data
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", croppedBlob, "avatar.jpg");
 
       const res = await fetch(`/api/admin/agents/${agentId}/avatar`, {
         method: "POST",
@@ -97,7 +194,14 @@ export function AvatarUpload({
       alert("שגיאה בהעלאת התמונה");
     } finally {
       setIsUploading(false);
+      setImageSrc(null);
     }
+  }
+
+  function handleCropCancel() {
+    setIsCropDialogOpen(false);
+    setImageSrc(null);
+    setZoom(1);
   }
 
   async function handleDelete() {
@@ -128,62 +232,115 @@ export function AvatarUpload({
   const isLoading = isUploading || isDeleting;
 
   return (
-    <div className="relative inline-block group">
-      <Avatar className={cn(sizeClasses[size], "border-2 border-border")}>
-        {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-        <AvatarFallback className="bg-brand-gradient text-white font-medium">
-          {getInitials(name)}
-        </AvatarFallback>
-      </Avatar>
+    <>
+      <div className="relative inline-block group">
+        <Avatar className={cn(sizeClasses[size], "border-2 border-border")}>
+          {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+          <AvatarFallback className="bg-brand-gradient text-white font-medium">
+            {getInitials(name)}
+          </AvatarFallback>
+        </Avatar>
 
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/80 rounded-full flex items-center justify-center">
-          <Loader2 className={cn(iconSizeClasses[size], "animate-spin")} />
-        </div>
-      )}
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-background/80 rounded-full flex items-center justify-center">
+            <Loader2 className={cn(iconSizeClasses[size], "animate-spin")} />
+          </div>
+        )}
 
-      {/* Action buttons */}
-      {!disabled && !isLoading && (
-        <div className="absolute -bottom-1 -right-1 flex gap-0.5">
-          <Button
-            type="button"
-            size="icon"
-            variant="secondary"
-            className={cn(
-              buttonSizeClasses[size],
-              "rounded-full shadow-md border border-border"
-            )}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Camera className={iconSizeClasses[size]} />
-          </Button>
-
-          {avatarUrl && (
+        {/* Action buttons */}
+        {!disabled && !isLoading && (
+          <div className="absolute -bottom-1 -right-1 flex gap-0.5">
             <Button
               type="button"
               size="icon"
-              variant="destructive"
+              variant="secondary"
               className={cn(
                 buttonSizeClasses[size],
-                "rounded-full shadow-md"
+                "rounded-full shadow-md border border-border"
               )}
-              onClick={handleDelete}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Trash2 className={iconSizeClasses[size]} />
+              <Camera className={iconSizeClasses[size]} />
             </Button>
-          )}
-        </div>
-      )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        onChange={handleFileSelect}
-        className="hidden"
-        disabled={disabled || isLoading}
-      />
-    </div>
+            {avatarUrl && (
+              <Button
+                type="button"
+                size="icon"
+                variant="destructive"
+                className={cn(
+                  buttonSizeClasses[size],
+                  "rounded-full shadow-md"
+                )}
+                onClick={handleDelete}
+              >
+                <Trash2 className={iconSizeClasses[size]} />
+              </Button>
+            )}
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={handleFileSelect}
+          className="hidden"
+          disabled={disabled || isLoading}
+        />
+      </div>
+
+      {/* Crop Dialog */}
+      <Dialog open={isCropDialogOpen} onOpenChange={setIsCropDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>חיתוך תמונה</DialogTitle>
+          </DialogHeader>
+
+          <div className="relative h-64 bg-muted rounded-lg overflow-hidden">
+            {imageSrc && (
+              <Cropper
+                aspectRatio={1}
+                zoom={zoom}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                minZoom={1}
+                maxZoom={3}
+                shape="circle"
+              >
+                <CropperImage src={imageSrc} alt="Crop" />
+                <CropperArea />
+              </Cropper>
+            )}
+          </div>
+
+          {/* Zoom slider */}
+          <div className="flex items-center gap-3 px-2">
+            <ZoomOut className="w-4 h-4 text-muted-foreground" />
+            <Slider
+              value={[zoom]}
+              onValueChange={(values: number[]) => setZoom(values[0])}
+              min={1}
+              max={3}
+              step={0.1}
+              className="flex-1"
+            />
+            <ZoomIn className="w-4 h-4 text-muted-foreground" />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleCropCancel}>
+              <X className="w-4 h-4 ml-2" />
+              ביטול
+            </Button>
+            <Button onClick={handleCropConfirm}>
+              <Check className="w-4 h-4 ml-2" />
+              אישור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
