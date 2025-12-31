@@ -9,10 +9,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 import {
   Select,
   SelectContent,
@@ -76,6 +78,7 @@ function AgentCard({
   onDelete,
   onToggleActive,
   onCancelEdit,
+  onAvatarUpdate,
   isSelf,
 }: {
   agent: Agent;
@@ -87,6 +90,7 @@ function AgentCard({
   onDelete: () => void;
   onToggleActive: (active: boolean) => void;
   onCancelEdit: () => void;
+  onAvatarUpdate: (avatarUrl: string | null) => void;
   isSelf: boolean;
 }) {
   return (
@@ -98,6 +102,16 @@ function AgentCard({
     >
       {isEditing ? (
         <CardContent className="pt-6 space-y-4">
+          {/* Avatar upload in edit mode */}
+          <div className="flex justify-center">
+            <AvatarUpload
+              avatarUrl={agent.avatarUrl}
+              name={agent.name}
+              agentId={agent.id}
+              onUpdate={onAvatarUpdate}
+              size="lg"
+            />
+          </div>
           <div className="space-y-2">
             <Label>שם</Label>
             <Input
@@ -167,6 +181,7 @@ function AgentCard({
               {/* Avatar */}
               <div className="relative shrink-0">
                 <Avatar className="size-14 border-2 border-border">
+                  {agent.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={agent.name} />}
                   <AvatarFallback className="bg-brand-gradient text-white text-lg font-medium">
                     {getInitials(agent.name)}
                   </AvatarFallback>
@@ -579,9 +594,8 @@ export default function AgentsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="password">סיסמה</Label>
-                    <Input
+                    <PasswordInput
                       id="password"
-                      type="password"
                       value={createFormData.password}
                       onChange={(e) =>
                         setCreateFormData({ ...createFormData, password: e.target.value })
@@ -672,6 +686,11 @@ export default function AgentsPage() {
                   onDelete={() => handleDelete(agent.id)}
                   onToggleActive={(active) => handleToggleActive(agent.id, active)}
                   onCancelEdit={cancelEdit}
+                  onAvatarUpdate={(avatarUrl) => {
+                    setAgents(agents.map((a) =>
+                      a.id === agent.id ? { ...a, avatarUrl } : a
+                    ));
+                  }}
                   isSelf={currentAgent?.id === agent.id}
                 />
               ))}
