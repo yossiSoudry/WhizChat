@@ -59,6 +59,8 @@ import { Clock } from "@/components/animate-ui/icons/clock";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 import { SlidersHorizontal } from "@/components/animate-ui/icons/sliders-horizontal";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bell } from "lucide-react";
 
 interface Settings {
   business_hours: {
@@ -89,6 +91,14 @@ interface Settings {
     daysUntilArchive: number;
     autoArchiveEnabled: boolean;
   };
+}
+
+interface NotificationAgent {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  receiveWhatsappNotifications: boolean;
 }
 
 const DAYS = [
@@ -144,10 +154,44 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const [agents, setAgents] = useState<NotificationAgent[]>([]);
 
   useEffect(() => {
     fetchSettings();
+    fetchAgents();
   }, []);
+
+  async function fetchAgents() {
+    try {
+      const res = await fetch("/api/admin/agents");
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data.agents || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch agents:", error);
+    }
+  }
+
+  async function toggleAgentNotification(agentId: string, enabled: boolean) {
+    try {
+      const res = await fetch(`/api/admin/agents/${agentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiveWhatsappNotifications: enabled }),
+      });
+
+      if (res.ok) {
+        setAgents(agents.map(agent =>
+          agent.id === agentId
+            ? { ...agent, receiveWhatsappNotifications: enabled }
+            : agent
+        ));
+      }
+    } catch (error) {
+      console.error("Failed to toggle notification:", error);
+    }
+  }
 
   async function fetchSettings() {
     try {
@@ -750,6 +794,57 @@ export default function SettingsPage() {
                       dir="ltr"
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* WhatsApp Notifications Card */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-emerald-500" />
+                    התראות WhatsApp לנציגים
+                  </CardTitle>
+                  <CardDescription>
+                    בחר אילו נציגים יקבלו התראה ב-WhatsApp כאשר מתקבלת הודעה חדשה
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {agents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      אין נציגים במערכת
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {agents.map((agent) => (
+                        <div
+                          key={agent.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarFallback className="bg-brand-gradient text-white text-sm">
+                                {agent.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{agent.name}</p>
+                              <p className="text-xs text-muted-foreground" dir="ltr">
+                                {agent.phone || "לא הוגדר מספר טלפון"}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={agent.receiveWhatsappNotifications}
+                            onCheckedChange={(checked) => toggleAgentNotification(agent.id, checked)}
+                            disabled={!agent.phone}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    * נציגים ללא מספר טלפון לא יכולים לקבל התראות. ניתן להוסיף מספר טלפון בעמוד הנציגים.
+                  </p>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -56,12 +56,16 @@ export const updateSettingsSchema = z.object({
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
+// Phone validation - Israeli format or international
+const phoneRegex = /^\+?[0-9]{9,15}$/;
+
 // Agent
 export const createAgentSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   role: z.enum(["admin", "agent"]).default("agent"),
   password: z.string().min(8),
+  phone: z.string().regex(phoneRegex, "מספר טלפון לא תקין").optional().or(z.literal("")),
 });
 
 export type CreateAgentInput = z.infer<typeof createAgentSchema>;
@@ -70,6 +74,9 @@ export const updateAgentSchema = z.object({
   name: z.string().min(1).optional(),
   role: z.enum(["admin", "agent"]).optional(),
   isActive: z.boolean().optional(),
+  newPassword: z.string().min(8).optional(), // For password reset by admin
+  phone: z.string().regex(phoneRegex, "מספר טלפון לא תקין").optional().or(z.literal("")),
+  receiveWhatsappNotifications: z.boolean().optional(),
 });
 
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>;

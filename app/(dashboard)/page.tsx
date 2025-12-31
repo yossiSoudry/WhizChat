@@ -12,8 +12,6 @@ import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/components/ui/sidebar";
 
-// TODO: Replace with actual agent ID from auth
-const TEMP_AGENT_ID = "temp-agent-id";
 
 interface FilterCounts {
   activeCount: number;
@@ -108,6 +106,13 @@ export default function ConversationsPage() {
   useEffect(() => {
     fetchConversations(activeFilter);
     fetchFilterCounts();
+
+    // Check for direct conversation link from /chat/[id]
+    const storedConversationId = sessionStorage.getItem("selectedConversationId");
+    if (storedConversationId) {
+      setSelectedId(storedConversationId);
+      sessionStorage.removeItem("selectedConversationId");
+    }
   }, [fetchConversations, fetchFilterCounts, activeFilter]);
 
   // Poll for new conversations and counts every 15 seconds (reduced from 5s)
@@ -143,7 +148,7 @@ export default function ConversationsPage() {
   return (
     <div className="flex h-full">
       {/* Agent presence heartbeat */}
-      <AgentPresence agentId={TEMP_AGENT_ID} />
+      <AgentPresence />
 
       {/* Conversations List Panel - hidden on mobile when chat is selected */}
       <div className={cn(

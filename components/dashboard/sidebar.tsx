@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { MessageCircle, Moon, Sun, Monitor, Settings } from "lucide-react";
+import { MessageCircle, Moon, Sun, Monitor, Settings, LogOut } from "lucide-react";
 import { ChevronUpDown } from "@/components/animate-ui/icons/chevron-up-down";
 import { MessageCircleMore } from "@/components/animate-ui/icons/message-circle-more";
 import { Users } from "@/components/animate-ui/icons/users";
@@ -13,6 +13,7 @@ import { SlidersHorizontal } from "@/components/animate-ui/icons/sliders-horizon
 import { MessageCircleQuestion } from "@/components/animate-ui/icons/message-circle-question";
 import { MessageSquareMore } from "@/components/animate-ui/icons/message-square-more";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { useAgent } from "@/contexts/agent-context";
 import {
   Sidebar,
   SidebarContent,
@@ -40,16 +41,19 @@ const navigation = [
     name: "שיחות",
     href: "/",
     icon: MessageCircleMore,
+    adminOnly: false,
   },
   {
     name: "נציגים",
     href: "/agents",
     icon: Users,
+    adminOnly: true,
   },
   {
     name: "סטטיסטיקות",
     href: "/analytics",
     icon: ChartLine,
+    adminOnly: false,
   },
 ];
 
@@ -74,6 +78,7 @@ const settingsNav = [
 function UserNav() {
   const { state } = useSidebar();
   const { theme, setTheme } = useTheme();
+  const { agent, logout, isAdmin } = useAgent();
   const isCollapsed = state === "collapsed";
   const [mounted, setMounted] = useState(false);
 
@@ -89,6 +94,19 @@ function UserNav() {
       : Monitor
     : Monitor;
 
+  // Get initials from agent name
+  const getInitials = (name: string) => {
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return parts[0][0] + parts[1][0];
+    }
+    return name.slice(0, 2);
+  };
+
+  const displayName = agent?.name || "נציג";
+  const initials = agent ? getInitials(agent.name) : "W";
+  const roleLabel = isAdmin ? "מנהל" : "נציג";
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -97,22 +115,22 @@ function UserNav() {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                tooltip={isCollapsed ? "נציג" : undefined}
+                tooltip={isCollapsed ? displayName : undefined}
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="size-8 border-2 border-sidebar-border">
                   <AvatarFallback className="bg-brand-gradient text-white text-xs font-medium">
-                    W
+                    {initials.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-right text-sm leading-tight">
-                  <span className="truncate font-semibold">נציג WhizChat</span>
+                  <span className="truncate font-semibold">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
                     <span className="relative flex size-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
                     </span>
-                    מחובר
+                    {roleLabel}
                   </span>
                 </div>
                 <ChevronUpDown className="mr-auto size-4" />
@@ -124,6 +142,9 @@ function UserNav() {
             align="start"
             className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
           >
+            <div className="px-2 py-1.5 text-sm text-muted-foreground border-b mb-1">
+              {agent?.email}
+            </div>
             <DropdownMenuItem>
               <Settings className="ml-2 size-4" />
               הגדרות חשבון
@@ -150,7 +171,11 @@ function UserNav() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => logout()}
+            >
+              <LogOut className="ml-2 size-4" />
               התנתק
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -163,6 +188,7 @@ function UserNav() {
 export function AppSidebar() {
   const pathname = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
+  const { isAdmin } = useAgent();
   const isCollapsed = state === "collapsed";
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -229,7 +255,9 @@ export function AppSidebar() {
           <SidebarGroupLabel>ניווט ראשי</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((item) => {
+              {navigation
+                .filter((item) => !item.adminOnly || isAdmin)
+                .map((item) => {
                 const isActive =
                   pathname === item.href ||
                   (item.href !== "/" && pathname.startsWith(item.href));

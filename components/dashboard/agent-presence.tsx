@@ -2,23 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
-interface AgentPresenceProps {
-  agentId: string;
-}
-
-export function AgentPresence({ agentId }: AgentPresenceProps) {
+export function AgentPresence() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!agentId) return;
-
     // Send initial heartbeat
     const sendHeartbeat = async () => {
       try {
         await fetch("/api/admin/presence", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentId }),
         });
       } catch (error) {
         console.error("Failed to send heartbeat:", error);
@@ -34,17 +26,11 @@ export function AgentPresence({ agentId }: AgentPresenceProps) {
     // Mark offline when leaving
     const handleBeforeUnload = () => {
       // Use sendBeacon for reliability on page unload
-      navigator.sendBeacon(
-        `/api/admin/presence?agentId=${agentId}`,
-        JSON.stringify({ offline: true })
-      );
+      navigator.sendBeacon("/api/admin/presence", "");
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        // User switched tabs - still send heartbeat but less frequently
-        // For now, just continue normal heartbeat
-      } else {
+      if (document.visibilityState === "visible") {
         // User returned - send heartbeat immediately
         sendHeartbeat();
       }
@@ -61,11 +47,11 @@ export function AgentPresence({ agentId }: AgentPresenceProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       // Mark offline when component unmounts
-      fetch(`/api/admin/presence?agentId=${agentId}`, {
+      fetch("/api/admin/presence", {
         method: "DELETE",
       }).catch(() => {});
     };
-  }, [agentId]);
+  }, []);
 
   // This component doesn't render anything
   return null;

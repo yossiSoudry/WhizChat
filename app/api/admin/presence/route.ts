@@ -1,50 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedAgent } from "@/lib/auth/get-agent";
 
 // Agent heartbeat - call every 30 seconds to maintain online status
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const body = await request.json();
-    const { agentId } = body;
-
-    if (!agentId) {
+    const authResult = await getAuthenticatedAgent();
+    if (!authResult.success) {
       return NextResponse.json(
-        { error: "Agent ID is required" },
-        { status: 400 }
+        { error: authResult.error },
+        { status: authResult.status }
       );
     }
 
-    // Try to update existing agent, or create a temporary one for dev
-    const existingAgent = await prisma.agent.findUnique({
-      where: { id: agentId },
+    await prisma.agent.update({
+      where: { id: authResult.agent.id },
+      data: {
+        isOnline: true,
+        lastSeenAt: new Date(),
+      },
     });
-
-    if (existingAgent) {
-      await prisma.agent.update({
-        where: { id: agentId },
-        data: {
-          isOnline: true,
-          lastSeenAt: new Date(),
-        },
-      });
-    } else if (agentId === "temp-agent-id") {
-      // Create a dev agent if it doesn't exist
-      await prisma.agent.upsert({
-        where: { id: agentId },
-        update: {
-          isOnline: true,
-          lastSeenAt: new Date(),
-        },
-        create: {
-          id: agentId,
-          authUserId: "dev-auth-user",
-          email: "dev@whizchat.local",
-          name: "נציג WhizChat",
-          isOnline: true,
-          lastSeenAt: new Date(),
-        },
-      });
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -90,20 +65,18 @@ export async function GET() {
 }
 
 // Mark agent as offline (call on logout/page unload)
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
-    const { searchParams } = new URL(request.url);
-    const agentId = searchParams.get("agentId");
-
-    if (!agentId) {
+    const authResult = await getAuthenticatedAgent();
+    if (!authResult.success) {
       return NextResponse.json(
-        { error: "Agent ID is required" },
-        { status: 400 }
+        { error: authResult.error },
+        { status: authResult.status }
       );
     }
 
     await prisma.agent.update({
-      where: { id: agentId },
+      where: { id: authResult.agent.id },
       data: {
         isOnline: false,
       },

@@ -164,12 +164,16 @@ model Agent {
   email     String  @unique
   name      String
   avatarUrl String? @map("avatar_url")
+  phone     String? @map("phone")
 
   // Role & Status
   role       AgentRole @default(agent)
   isActive   Boolean   @default(true) @map("is_active")
   isOnline   Boolean   @default(false) @map("is_online")
   lastSeenAt DateTime? @map("last_seen_at")
+
+  // WhatsApp Notifications
+  receiveWhatsappNotifications Boolean @default(false) @map("receive_whatsapp_notifications")
 
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")

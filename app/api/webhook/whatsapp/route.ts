@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { extractSessionFromMessage, extractReplyText } from "@/lib/greenapi/client";
+import { notifyAgentsOnNewMessage } from "@/lib/notifications/whatsapp-notifications";
 
 // WhatsApp Webhook from Green API
 export async function POST(request: NextRequest) {
@@ -169,6 +170,15 @@ async function handleIncomingMessage(body: {
             lastMessagePreview: messageText.slice(0, 100),
             unreadCount: { increment: 1 },
           },
+        });
+
+        // Send WhatsApp notifications to agents (non-blocking)
+        notifyAgentsOnNewMessage({
+          conversationId: conversation.id,
+          customerName: senderData.senderName || "לקוח",
+          messagePreview: messageText,
+        }).catch((error) => {
+          console.error("Failed to send agent notifications:", error);
         });
       }
     }

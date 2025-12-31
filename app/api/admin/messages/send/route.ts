@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedAgent } from "@/lib/auth/get-agent";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated agent
+    const authResult = await getAuthenticatedAgent();
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    const agent = authResult.agent;
+
     const body = await request.json();
-    const { conversationId, content, agentId } = body;
+    const { conversationId, content } = body;
 
     if (!conversationId || !content) {
       return NextResponse.json(
@@ -25,28 +37,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try to find agent, but allow sending without one (dev mode)
-    let agentName = "נציג WhizChat";
-    let senderId = agentId;
-
-    if (agentId && agentId !== "temp-agent-id") {
-      const agent = await prisma.agent.findUnique({
-        where: { id: agentId },
-      });
-      if (agent && agent.isActive) {
-        agentName = agent.name;
-        senderId = agent.id;
-      }
-    }
-
     // Create message with explicit status
     const message = await prisma.message.create({
       data: {
         conversationId,
         content,
         senderType: "agent",
-        senderId,
-        senderName: agentName,
+        senderId: agent.id,
+        senderName: agent.name,
         source: "dashboard",
         status: "sent",
       },

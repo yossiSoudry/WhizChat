@@ -30,6 +30,7 @@ import {
   Eye,
   Clock,
   Edit2,
+  Phone,
 } from "lucide-react";
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
@@ -40,16 +41,19 @@ import { X } from "@/components/animate-ui/icons/x";
 import { cn } from "@/lib/utils";
 import { RelativeTimeCard } from "@/components/ui/relative-time-card";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
+import { useAgent } from "@/contexts/agent-context";
 
 interface Agent {
   id: string;
   email: string;
   name: string;
   avatarUrl: string | null;
+  phone: string | null;
   role: "admin" | "agent";
   isActive: boolean;
   isOnline: boolean;
   lastSeenAt: string | null;
+  receiveWhatsappNotifications: boolean;
   createdAt: string;
 }
 
@@ -72,16 +76,18 @@ function AgentCard({
   onDelete,
   onToggleActive,
   onCancelEdit,
+  isSelf,
 }: {
   agent: Agent;
   isEditing: boolean;
-  formData: { name: string; role: "admin" | "agent"; isActive: boolean };
-  setFormData: (data: { name: string; role: "admin" | "agent"; isActive: boolean }) => void;
+  formData: { name: string; phone: string; role: "admin" | "agent"; isActive: boolean };
+  setFormData: (data: { name: string; phone: string; role: "admin" | "agent"; isActive: boolean }) => void;
   onEdit: () => void;
   onUpdate: () => void;
   onDelete: () => void;
   onToggleActive: (active: boolean) => void;
   onCancelEdit: () => void;
+  isSelf: boolean;
 }) {
   return (
     <Card
@@ -100,6 +106,18 @@ function AgentCard({
                 setFormData({ ...formData, name: e.target.value })
               }
               autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>טלפון (לקבלת התראות WhatsApp)</Label>
+            <Input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              placeholder="+972501234567"
+              dir="ltr"
             />
           </div>
           <div className="space-y-2">
@@ -164,10 +182,12 @@ function AgentCard({
 
               {/* Actions - visible in top row on mobile */}
               <div className="flex items-center gap-1 shrink-0 sm:hidden">
-                <Switch
-                  checked={agent.isActive}
-                  onCheckedChange={onToggleActive}
-                />
+                {!isSelf && (
+                  <Switch
+                    checked={agent.isActive}
+                    onCheckedChange={onToggleActive}
+                  />
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -176,16 +196,18 @@ function AgentCard({
                 >
                   <Edit2 className="w-4 h-4" />
                 </Button>
-                <AnimateIcon animateOnHover asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onDelete}
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                  >
-                    <Trash className="w-4 h-4" />
-                  </Button>
-                </AnimateIcon>
+                {!isSelf && (
+                  <AnimateIcon animateOnHover asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={onDelete}
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </AnimateIcon>
+                )}
               </div>
             </div>
 
@@ -213,10 +235,16 @@ function AgentCard({
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
                 <Mail className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate" dir="ltr">{agent.email}</span>
               </div>
+              {agent.phone && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate" dir="ltr">{agent.phone}</span>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
@@ -236,10 +264,12 @@ function AgentCard({
 
             {/* Actions - hidden on mobile, visible on sm+ */}
             <div className="hidden sm:flex items-center gap-1 shrink-0">
-              <Switch
-                checked={agent.isActive}
-                onCheckedChange={onToggleActive}
-              />
+              {!isSelf && (
+                <Switch
+                  checked={agent.isActive}
+                  onCheckedChange={onToggleActive}
+                />
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -248,16 +278,18 @@ function AgentCard({
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <AnimateIcon animateOnHover asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onDelete}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                >
-                  <Trash className="w-4 h-4" />
-                </Button>
-              </AnimateIcon>
+              {!isSelf && (
+                <AnimateIcon animateOnHover asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onDelete}
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                  >
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </AnimateIcon>
+              )}
             </div>
           </div>
         </CardContent>
@@ -267,16 +299,19 @@ function AgentCard({
 }
 
 export default function AgentsPage() {
+  const { agent: currentAgent } = useAgent();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
+    phone: string;
     role: "admin" | "agent";
     isActive: boolean;
   }>({
     name: "",
+    phone: "",
     role: "agent",
     isActive: true,
   });
@@ -284,6 +319,7 @@ export default function AgentsPage() {
     name: "",
     email: "",
     password: "",
+    phone: "",
     role: "agent" as "admin" | "agent",
   });
 
@@ -319,7 +355,7 @@ export default function AgentsPage() {
         const data = await res.json();
         setAgents([data.agent, ...agents]);
         setIsCreating(false);
-        setCreateFormData({ name: "", email: "", password: "", role: "agent" });
+        setCreateFormData({ name: "", email: "", password: "", phone: "", role: "agent" });
       }
     } catch (error) {
       console.error("Failed to create agent:", error);
@@ -338,7 +374,7 @@ export default function AgentsPage() {
         const data = await res.json();
         setAgents(agents.map((agent) => (agent.id === id ? data.agent : agent)));
         setEditingId(null);
-        setFormData({ name: "", role: "agent", isActive: true });
+        setFormData({ name: "", phone: "", role: "agent", isActive: true });
       }
     } catch (error) {
       console.error("Failed to update agent:", error);
@@ -388,6 +424,7 @@ export default function AgentsPage() {
     setEditingId(agent.id);
     setFormData({
       name: agent.name,
+      phone: agent.phone || "",
       role: agent.role,
       isActive: agent.isActive,
     });
@@ -396,8 +433,8 @@ export default function AgentsPage() {
   function cancelEdit() {
     setEditingId(null);
     setIsCreating(false);
-    setFormData({ name: "", role: "agent", isActive: true });
-    setCreateFormData({ name: "", email: "", password: "", role: "agent" });
+    setFormData({ name: "", phone: "", role: "agent", isActive: true });
+    setCreateFormData({ name: "", email: "", password: "", phone: "", role: "agent" });
   }
 
   if (isLoading) {
@@ -554,22 +591,35 @@ export default function AgentsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="role">תפקיד</Label>
-                    <Select
-                      value={createFormData.role}
-                      onValueChange={(value: "admin" | "agent") =>
-                        setCreateFormData({ ...createFormData, role: value })
+                    <Label htmlFor="phone">טלפון (לקבלת התראות)</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={createFormData.phone}
+                      onChange={(e) =>
+                        setCreateFormData({ ...createFormData, phone: e.target.value })
                       }
-                    >
-                      <SelectTrigger id="role">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="agent">נציג</SelectItem>
-                        <SelectItem value="admin">מנהל</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      placeholder="+972501234567"
+                      dir="ltr"
+                    />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">תפקיד</Label>
+                  <Select
+                    value={createFormData.role}
+                    onValueChange={(value: "admin" | "agent") =>
+                      setCreateFormData({ ...createFormData, role: value })
+                    }
+                  >
+                    <SelectTrigger id="role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agent">נציג</SelectItem>
+                      <SelectItem value="admin">מנהל</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleCreate} className="gap-2">
@@ -622,6 +672,7 @@ export default function AgentsPage() {
                   onDelete={() => handleDelete(agent.id)}
                   onToggleActive={(active) => handleToggleActive(agent.id, active)}
                   onCancelEdit={cancelEdit}
+                  isSelf={currentAgent?.id === agent.id}
                 />
               ))}
             </div>

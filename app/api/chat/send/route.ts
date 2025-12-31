@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendMessageSchema } from "@/lib/validations/chat";
 import { corsResponse, handleOptions } from "@/lib/cors";
+import { notifyAgentsOnNewMessage } from "@/lib/notifications/whatsapp-notifications";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -83,16 +84,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Send to WhatsApp Business via Green API
-    let waSent = false;
-    // if (process.env.GREEN_API_INSTANCE_ID && process.env.GREEN_API_TOKEN) {
-    //   waSent = await sendToWhatsAppBusiness(conversation, message);
-    // }
+    // Send WhatsApp notifications to agents (non-blocking)
+    const customerName = senderName || conversation.wpUserName || conversation.guestName || "לקוח";
+    notifyAgentsOnNewMessage({
+      conversationId,
+      customerName,
+      messagePreview: content,
+    }).catch((error) => {
+      console.error("Failed to send agent notifications:", error);
+    });
 
     return corsResponse({
       message,
       deduplicated: false,
-      waSent,
+      waSent: false,
     });
   } catch (error) {
     console.error("Send message error:", error);

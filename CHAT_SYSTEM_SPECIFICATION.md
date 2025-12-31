@@ -47,6 +47,19 @@
 | מערכת "עצה" | WordPress | עתידי |
 | Docs | Vercel (Next.js) | עתידי |
 
+### 1.4 פרטי פריסה (Deployment)
+
+| שירות | כתובת | תיאור |
+|--------|--------|--------|
+| Dashboard | https://whiz-chat.vercel.app | דשבורד ניהול לנציגים |
+| API | https://whiz-chat.vercel.app/api | כל ה-API endpoints |
+| Widget | https://whiz-chat.vercel.app/widget.js | סקריפט הווידג'ט להטמעה |
+
+**לינק ישיר לשיחה:**
+```
+https://whiz-chat.vercel.app/chat/{conversationId}
+```
+
 ---
 
 ## 2. ארכיטקטורה טכנית

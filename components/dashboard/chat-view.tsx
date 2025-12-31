@@ -357,7 +357,6 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         body: JSON.stringify({
           conversationId,
           content: newMessage,
-          agentId: "temp-agent-id",
         }),
       });
 
