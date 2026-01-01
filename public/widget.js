@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.3.0';
+  var WIDGET_VERSION = '1.3.1';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -189,7 +189,7 @@
       .whizchat-window {
         position: absolute;
         bottom: 70px;
-        ${position}: 0;
+        right: 0;
         width: 380px;
         height: 500px;
         background: white;
@@ -203,6 +203,16 @@
 
       .whizchat-window.open {
         display: flex;
+      }
+
+      .position-left .whizchat-window {
+        right: auto;
+        left: 0;
+      }
+
+      .position-right .whizchat-window {
+        left: auto;
+        right: 0;
       }
 
       @keyframes whizchat-slideUp {
