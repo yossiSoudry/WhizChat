@@ -1,12 +1,11 @@
 "use client";
 
 import { formatRelativeTime, cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { User, Search, Inbox, Check, CheckCheck } from "lucide-react";
-import { useState, useMemo } from "react";
+import { User, Inbox, Check, CheckCheck } from "lucide-react";
 // Animate UI components
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 
@@ -14,6 +13,7 @@ interface Conversation {
   id: string;
   customerName: string;
   customerEmail: string | null;
+  customerAvatar: string | null;
   customerType: "wordpress" | "guest";
   status: "active" | "closed" | "pending";
   contactType: "email" | "whatsapp" | "none";
@@ -80,26 +80,9 @@ export function ConversationList({
   onSelect,
   isLoading,
 }: ConversationListProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Filter conversations based on search
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
-    const query = searchQuery.toLowerCase();
-    return conversations.filter(
-      (conv) =>
-        conv.customerName.toLowerCase().includes(query) ||
-        conv.customerEmail?.toLowerCase().includes(query) ||
-        conv.lastMessagePreview?.toLowerCase().includes(query)
-    );
-  }, [conversations, searchQuery]);
-
   if (isLoading) {
     return (
       <div className="h-full flex flex-col">
-        <div className="p-4 shrink-0">
-          <div className="h-10 skeleton rounded-lg" />
-        </div>
         <div className="flex-1 overflow-auto divide-y divide-border">
           {[1, 2, 3, 4, 5].map((i) => (
             <ConversationSkeleton key={i} />
@@ -111,45 +94,25 @@ export function ConversationList({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Search */}
-      <div className="p-4 shrink-0">
-        <div className="relative flex items-center h-10 w-full rounded-lg bg-muted/50 focus-within:bg-card transition-colors">
-          <Search className="w-4 h-4 text-muted-foreground absolute right-3 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="חיפוש שיחות..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-full bg-transparent rounded-lg pr-10 pl-3 text-sm placeholder:text-muted-foreground focus:outline-none"
-          />
-        </div>
-      </div>
-
       {/* List */}
-      {filteredConversations.length === 0 ? (
+      {conversations.length === 0 ? (
         <Fade inView>
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              {searchQuery ? (
-                <Search className="w-7 h-7 text-muted-foreground" />
-              ) : (
-                <Inbox className="w-7 h-7 text-muted-foreground" />
-              )}
+              <Inbox className="w-7 h-7 text-muted-foreground" />
             </div>
             <h3 className="font-medium text-foreground mb-1">
-              {searchQuery ? "לא נמצאו תוצאות" : "אין שיחות עדיין"}
+              אין שיחות
             </h3>
             <p className="text-sm text-muted-foreground">
-              {searchQuery
-                ? "נסה לחפש במילים אחרות"
-                : "שיחות חדשות יופיעו כאן"}
+              שיחות חדשות יופיעו כאן
             </p>
           </div>
         </Fade>
       ) : (
         <ScrollArea className="flex-1 min-h-0">
           <div className="border-t border-border">
-            {filteredConversations.map((conv, index) => (
+            {conversations.map((conv, index) => (
               <Fade key={conv.id} delay={index * 30} inView>
                 <button
                   onClick={() => onSelect(conv.id)}
@@ -163,6 +126,9 @@ export function ConversationList({
                     {/* Right side (in RTL) - Avatar */}
                     <div className="relative shrink-0">
                       <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
+                        {conv.customerAvatar && (
+                          <AvatarImage src={conv.customerAvatar} alt={conv.customerName} />
+                        )}
                         <AvatarFallback
                           className={cn(
                             "text-sm font-medium",

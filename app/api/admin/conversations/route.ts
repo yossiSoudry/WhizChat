@@ -52,6 +52,14 @@ export async function GET(request: NextRequest) {
         { guestName: { contains: search, mode: "insensitive" } },
         { guestContact: { contains: search, mode: "insensitive" } },
         { lastMessagePreview: { contains: search, mode: "insensitive" } },
+        // Search in all messages content
+        {
+          messages: {
+            some: {
+              content: { contains: search, mode: "insensitive" },
+            },
+          },
+        },
       ];
     }
 
@@ -103,6 +111,7 @@ export async function GET(request: NextRequest) {
         customerName:
           conv.wpUserName || conv.guestName || "Anonymous",
         customerEmail: conv.wpUserEmail || conv.guestContact || null,
+        customerAvatar: conv.wpUserAvatar || null,
         customerType: conv.wpUserId ? "wordpress" : "guest",
         status: conv.status,
         contactType: conv.contactType,

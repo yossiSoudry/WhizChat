@@ -77,9 +77,10 @@ model Conversation {
   id String @id @default(uuid())
 
   // WordPress User (if logged in)
-  wpUserId    Int?    @map("wp_user_id")
-  wpUserEmail String? @map("wp_user_email")
-  wpUserName  String? @map("wp_user_name")
+  wpUserId     Int?    @map("wp_user_id")
+  wpUserEmail  String? @map("wp_user_email")
+  wpUserName   String? @map("wp_user_name")
+  wpUserAvatar String? @map("wp_user_avatar")
 
   // Anonymous User (Supabase Anonymous Auth user ID)
   anonUserId String? @unique @map("anon_user_id")

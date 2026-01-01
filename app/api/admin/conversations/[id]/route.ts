@@ -48,6 +48,7 @@ export async function GET(
         id: conversation.id,
         customerName: conversation.wpUserName || conversation.guestName || "Anonymous",
         customerEmail: conversation.wpUserEmail || conversation.guestContact || null,
+        customerAvatar: conversation.wpUserAvatar || null,
         customerType: conversation.wpUserId ? "wordpress" : "guest",
         contactType: conversation.contactType,
         status: conversation.status,

@@ -8,6 +8,42 @@ interface ChatWidgetProps {
   apiUrl?: string;
 }
 
+// Storage keys
+const STORAGE_SOUND_KEY = "whizchat-widget-sound";
+const STORAGE_PUSH_KEY = "whizchat-widget-push";
+
+// Create notification sound using Web Audio API
+function playNotificationSound(volume: number = 0.5): void {
+  try {
+    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const now = audioContext.currentTime;
+
+    // Pleasant two-tone notification
+    const frequencies = [880, 1318.5]; // A5 and E6
+
+    frequencies.forEach((freq, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(freq, now);
+
+      const startTime = now + index * 0.12;
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(volume * 0.4, startTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + 0.5);
+    });
+  } catch (error) {
+    console.error("Error playing notification sound:", error);
+  }
+}
+
 // Generate unique ID for deduplication
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -16,9 +52,10 @@ function generateId(): string {
 // Format time for display
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleTimeString("he-IL", {
+  return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   });
 }
 
@@ -70,10 +107,16 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [agentIsTyping, setAgentIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | "default">("default");
+  const [showSettings, setShowSettings] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
   const {
     position = "right",
@@ -82,7 +125,80 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     wpUserId,
     wpUserEmail,
     wpUserName,
+    wpUserAvatar,
   } = config;
+
+  // Load settings from localStorage
+  useEffect(() => {
+    try {
+      const soundStored = localStorage.getItem(STORAGE_SOUND_KEY);
+      if (soundStored !== null) {
+        setSoundEnabled(JSON.parse(soundStored));
+      }
+      const pushStored = localStorage.getItem(STORAGE_PUSH_KEY);
+      if (pushStored !== null) {
+        setPushEnabled(JSON.parse(pushStored));
+      }
+      // Check notification permission
+      if ("Notification" in window) {
+        setPushPermission(Notification.permission);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Save sound setting
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_SOUND_KEY, JSON.stringify(soundEnabled));
+    } catch {
+      // Ignore
+    }
+  }, [soundEnabled]);
+
+  // Save push setting
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_PUSH_KEY, JSON.stringify(pushEnabled));
+    } catch {
+      // Ignore
+    }
+  }, [pushEnabled]);
+
+  // Request push notification permission
+  const requestPushPermission = useCallback(async () => {
+    if (!("Notification" in window)) return false;
+    try {
+      const result = await Notification.requestPermission();
+      setPushPermission(result);
+      if (result === "granted") {
+        setPushEnabled(true);
+        return true;
+      }
+      setPushEnabled(false);
+      return false;
+    } catch (error) {
+      console.error("Error requesting notification permission:", error);
+      return false;
+    }
+  }, []);
+
+  // Show push notification
+  const showPushNotification = useCallback((title: string, body: string) => {
+    if (!pushEnabled || pushPermission !== "granted") return;
+    // Only show if tab is not visible
+    if (document.visibilityState === "visible" && isOpen) return;
+    try {
+      new Notification(title, {
+        body,
+        icon: "/icons/icon-192x192.png",
+        tag: "whizchat-widget",
+      });
+    } catch (error) {
+      console.error("Error showing notification:", error);
+    }
+  }, [pushEnabled, pushPermission, isOpen]);
 
   // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
@@ -93,10 +209,13 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Focus input when opened
+  // Focus input when opened and clear unread count
   useEffect(() => {
     if (isOpen && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 300);
+    }
+    if (isOpen) {
+      setUnreadCount(0);
     }
   }, [isOpen]);
 
@@ -111,6 +230,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           wpUserId,
           wpUserEmail,
           wpUserName,
+          wpUserAvatar,
         }),
       });
 
@@ -137,7 +257,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [apiUrl, wpUserId, wpUserEmail, wpUserName]);
+  }, [apiUrl, wpUserId, wpUserEmail, wpUserName, wpUserAvatar]);
 
   // Initialize on first open
   useEffect(() => {
@@ -148,7 +268,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
   // Poll for new messages and status updates
   const fetchNewMessages = useCallback(async () => {
-    if (!conversationId || !isOpen) return;
+    if (!conversationId) return;
 
     try {
       const lastMessage = messages[messages.length - 1];
@@ -161,8 +281,31 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         const data = await res.json();
         if (data.messages && data.messages.length > 0) {
           const newAgentMessages = data.messages.filter(
-            (m: Message) => m.senderType === "agent"
+            (m: Message) => m.senderType === "agent" && m.id !== lastMessageIdRef.current
           );
+
+          // Play notification sound and show push notification for new agent messages
+          if (newAgentMessages.length > 0) {
+            const latestAgentMsg = newAgentMessages[newAgentMessages.length - 1];
+            lastMessageIdRef.current = latestAgentMsg.id;
+
+            // Play sound if enabled
+            if (soundEnabled) {
+              playNotificationSound();
+            }
+
+            // Show push notification if widget is closed or tab not visible
+            if (!isOpen || document.visibilityState !== "visible") {
+              showPushNotification(
+                "New Message",
+                latestAgentMsg.content.substring(0, 100)
+              );
+              // Increment unread count if widget is closed
+              if (!isOpen) {
+                setUnreadCount(prev => prev + newAgentMessages.length);
+              }
+            }
+          }
 
           setMessages((prev) => {
             const existingIds = new Set(prev.map((m) => m.id));
@@ -172,8 +315,8 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
             return [...prev, ...newMessages];
           });
 
-          // Mark new agent messages as read
-          if (newAgentMessages.length > 0) {
+          // Mark new agent messages as read if widget is open
+          if (newAgentMessages.length > 0 && isOpen) {
             await fetch(`${apiUrl}/api/chat/read`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -188,7 +331,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
-  }, [apiUrl, conversationId, isOpen, messages]);
+  }, [apiUrl, conversationId, isOpen, messages, soundEnabled, showPushNotification]);
 
   // Sync message statuses (to get read receipts)
   const syncMessageStatuses = useCallback(async () => {
@@ -219,11 +362,13 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }, [apiUrl, conversationId, isOpen, messages.length]);
 
-  // Polling interval for new messages (3 seconds)
+  // Polling interval for new messages (3 seconds when open, 10 seconds when closed for notifications)
   useEffect(() => {
-    if (!isOpen || !conversationId) return;
+    if (!conversationId) return;
 
-    const interval = setInterval(fetchNewMessages, 3000);
+    // Poll more frequently when open, less when closed
+    const pollInterval = isOpen ? 3000 : 10000;
+    const interval = setInterval(fetchNewMessages, pollInterval);
     return () => clearInterval(interval);
   }, [isOpen, conversationId, fetchNewMessages]);
 
@@ -1202,6 +1347,127 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         }
 
         /* ========================================
+           Settings Panel
+           ======================================== */
+        .wc-settings-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--wc-text-secondary);
+          transition: all 0.2s ease;
+          margin-left: 4px;
+        }
+
+        .wc-settings-btn:hover {
+          background: var(--wc-bg-secondary);
+          color: var(--wc-text);
+        }
+
+        .wc-settings-btn.active {
+          background: var(--wc-primary);
+          color: white;
+        }
+
+        .wc-settings-panel {
+          padding: 16px;
+          border-bottom: 1px solid var(--wc-border);
+          background: var(--wc-bg);
+          animation: wc-fade-in 0.2s ease-out;
+        }
+
+        .wc-settings-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--wc-text);
+          margin-bottom: 12px;
+        }
+
+        .wc-setting-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 0;
+        }
+
+        .wc-setting-item + .wc-setting-item {
+          border-top: 1px solid var(--wc-border);
+        }
+
+        .wc-setting-label {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 14px;
+          color: var(--wc-text);
+        }
+
+        .wc-setting-label svg {
+          width: 18px;
+          height: 18px;
+          color: var(--wc-text-secondary);
+        }
+
+        .wc-toggle {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          background: var(--wc-border);
+          border-radius: 12px;
+          border: none;
+          cursor: pointer;
+          transition: background 0.2s ease;
+        }
+
+        .wc-toggle.on {
+          background: var(--wc-primary);
+        }
+
+        .wc-toggle::after {
+          content: '';
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          background: white;
+          border-radius: 50%;
+          transition: transform 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .wc-toggle.on::after {
+          transform: translateX(20px);
+        }
+
+        .wc-setting-note {
+          font-size: 12px;
+          color: var(--wc-text-secondary);
+          margin-top: 4px;
+          padding-right: 28px;
+        }
+
+        .wc-enable-btn {
+          padding: 6px 12px;
+          background: var(--wc-primary);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 12px;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .wc-enable-btn:hover {
+          opacity: 0.9;
+        }
+
+        /* ========================================
            Responsive
            ======================================== */
         @media (max-width: 480px) {
@@ -1231,6 +1497,12 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         )}
+        {/* Unread badge */}
+        {!isOpen && unreadCount > 0 && (
+          <span className="wc-button-badge">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Chat Window */}
@@ -1252,13 +1524,79 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                 </div>
               </div>
             </div>
-            <button className="wc-close" onClick={() => setIsOpen(false)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {/* Settings button */}
+              <button
+                className={`wc-settings-btn ${showSettings ? 'active' : ''}`}
+                onClick={() => setShowSettings(!showSettings)}
+                aria-label="Settings"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+              <button className="wc-close" onClick={() => setIsOpen(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
           </div>
+
+          {/* Settings Panel */}
+          {showSettings && (
+            <div className="wc-settings-panel">
+              <div className="wc-settings-title">Notification Settings</div>
+
+              {/* Sound toggle */}
+              <div className="wc-setting-item">
+                <div className="wc-setting-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </svg>
+                  Sounds
+                </div>
+                <button
+                  className={`wc-toggle ${soundEnabled ? 'on' : ''}`}
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  aria-label={soundEnabled ? "Disable sounds" : "Enable sounds"}
+                />
+              </div>
+
+              {/* Push notifications */}
+              <div className="wc-setting-item">
+                <div>
+                  <div className="wc-setting-label">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    Notifications
+                  </div>
+                  {pushPermission === "denied" && (
+                    <div className="wc-setting-note">Notifications are blocked in browser</div>
+                  )}
+                </div>
+                {pushPermission === "granted" ? (
+                  <button
+                    className={`wc-toggle ${pushEnabled ? 'on' : ''}`}
+                    onClick={() => setPushEnabled(!pushEnabled)}
+                    aria-label={pushEnabled ? "Disable notifications" : "Enable notifications"}
+                  />
+                ) : pushPermission !== "denied" ? (
+                  <button
+                    className="wc-enable-btn"
+                    onClick={requestPushPermission}
+                  >
+                    Enable
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="wc-messages">

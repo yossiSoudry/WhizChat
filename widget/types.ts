@@ -43,4 +43,5 @@ export interface WidgetConfig {
   wpUserId?: number;
   wpUserEmail?: string;
   wpUserName?: string;
+  wpUserAvatar?: string;
 }

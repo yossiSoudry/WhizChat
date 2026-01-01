@@ -6,6 +6,7 @@ export const chatInitSchema = z.object({
   wpUserId: z.number().optional(),
   wpUserEmail: z.string().email().optional(),
   wpUserName: z.string().optional(),
+  wpUserAvatar: z.string().url().optional(),
   // Anonymous user ID from Supabase
   anonUserId: z.string().uuid().optional(),
 });

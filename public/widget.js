@@ -2,8 +2,10 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.0.0';
+  var WIDGET_VERSION = '1.2.0';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
+  var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
+  var STORAGE_PUSH_KEY = 'whizchat-widget-push';
 
   // State
   var state = {
@@ -16,6 +18,12 @@
     isLoading: false,
     isSending: false,
     isUploading: false,
+    soundEnabled: true,
+    pushEnabled: false,
+    pushPermission: 'default',
+    showSettings: false,
+    unreadCount: 0,
+    lastMessageId: null,
   };
 
   // Config from window object
@@ -26,6 +34,74 @@
   var wpUserId = config.wpUserId;
   var wpUserEmail = config.wpUserEmail;
   var wpUserName = config.wpUserName;
+  var wpUserAvatar = config.wpUserAvatar;
+
+  // Load settings from localStorage
+  try {
+    var soundStored = localStorage.getItem(STORAGE_SOUND_KEY);
+    if (soundStored !== null) state.soundEnabled = JSON.parse(soundStored);
+    var pushStored = localStorage.getItem(STORAGE_PUSH_KEY);
+    if (pushStored !== null) state.pushEnabled = JSON.parse(pushStored);
+    if ('Notification' in window) {
+      state.pushPermission = Notification.permission;
+    }
+  } catch (e) {}
+
+  // Play notification sound using Web Audio API
+  function playNotificationSound() {
+    if (!state.soundEnabled) return;
+    try {
+      var AudioContext = window.AudioContext || window.webkitAudioContext;
+      var audioContext = new AudioContext();
+      var now = audioContext.currentTime;
+      var frequencies = [880, 1318.5];
+
+      frequencies.forEach(function(freq, index) {
+        var oscillator = audioContext.createOscillator();
+        var gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, now);
+        var startTime = now + index * 0.12;
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.5);
+      });
+    } catch (e) {
+      console.error('Error playing notification sound:', e);
+    }
+  }
+
+  // Show push notification
+  function showPushNotification(title, body) {
+    if (!state.pushEnabled || state.pushPermission !== 'granted') return;
+    if (document.visibilityState === 'visible' && state.isOpen) return;
+    try {
+      new Notification(title, {
+        body: body,
+        icon: '/icons/icon-192x192.png',
+        tag: 'whizchat-widget'
+      });
+    } catch (e) {
+      console.error('Error showing notification:', e);
+    }
+  }
+
+  // Request push notification permission
+  function requestPushPermission() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(function(result) {
+      state.pushPermission = result;
+      if (result === 'granted') {
+        state.pushEnabled = true;
+        try { localStorage.setItem(STORAGE_PUSH_KEY, 'true'); } catch (e) {}
+      }
+      renderSettings();
+    });
+  }
 
   // Generate unique ID
   function generateId() {
@@ -35,7 +111,7 @@
   // Format time
   function formatTime(dateString) {
     var date = new Date(dateString);
-    return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
   // Format file size
@@ -55,7 +131,7 @@
         bottom: 20px;
         ${position}: 20px;
         z-index: 999999;
-        direction: rtl;
+        direction: ltr;
         --widget-primary: ${primaryColor};
         --widget-secondary: ${secondaryColor};
       }
@@ -176,7 +252,7 @@
       .whizchat-message.customer {
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        align-self: flex-start;
+        align-self: flex-end;
         border-bottom-right-radius: 4px;
       }
 
@@ -184,7 +260,7 @@
       .whizchat-message.bot {
         background: #f3f4f6;
         color: #1f2937;
-        align-self: flex-end;
+        align-self: flex-start;
         border-bottom-left-radius: 4px;
       }
 
@@ -252,7 +328,7 @@
         font-size: 14px;
         outline: none;
         transition: border-color 0.2s;
-        direction: rtl;
+        direction: ltr;
       }
 
       .whizchat-input:focus {
@@ -401,6 +477,155 @@
         height: auto;
         display: block;
       }
+
+      .whizchat-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .whizchat-settings-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.1);
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: background 0.2s;
+      }
+
+      .whizchat-settings-btn:hover {
+        background: rgba(255,255,255,0.2);
+      }
+
+      .whizchat-settings-btn.active {
+        background: rgba(255,255,255,0.3);
+      }
+
+      .whizchat-settings-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .whizchat-settings-panel {
+        padding: 16px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+        animation: whizchat-fadeIn 0.2s ease-out;
+      }
+
+      .whizchat-settings-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 12px;
+      }
+
+      .whizchat-setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .whizchat-setting-item:first-of-type {
+        border-top: none;
+      }
+
+      .whizchat-setting-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #1f2937;
+      }
+
+      .whizchat-setting-label svg {
+        width: 18px;
+        height: 18px;
+        color: #6b7280;
+      }
+
+      .whizchat-toggle {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: #e5e7eb;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .whizchat-toggle.on {
+        background: var(--widget-primary);
+      }
+
+      .whizchat-toggle::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .whizchat-toggle.on::after {
+        transform: translateX(20px);
+      }
+
+      .whizchat-enable-btn {
+        padding: 6px 12px;
+        background: var(--widget-primary);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .whizchat-enable-btn:hover {
+        opacity: 0.9;
+      }
+
+      .whizchat-setting-note {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 2px;
+      }
+
+      .whizchat-unread-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 10px;
+        background: #ef4444;
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+        animation: whizchat-pulse 2s infinite;
+      }
+
+      @keyframes whizchat-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -419,6 +644,7 @@
         <svg id="whizchat-icon-close" viewBox="0 0 24 24" style="display: none;">
           <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
         </svg>
+        <span id="whizchat-unread-badge" class="whizchat-unread-badge" style="display: none;"></span>
       </button>
 
       <div class="whizchat-window" id="whizchat-window">
@@ -427,31 +653,40 @@
             <div class="whizchat-header-title">WhizChat</div>
             <div class="whizchat-header-status">
               <span class="whizchat-status-dot" id="whizchat-status-dot"></span>
-              <span id="whizchat-status-text">מחובר</span>
+              <span id="whizchat-status-text">Online</span>
             </div>
           </div>
-          <button class="whizchat-close" id="whizchat-close-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-            </svg>
-          </button>
+          <div class="whizchat-header-actions">
+            <button class="whizchat-settings-btn" id="whizchat-settings-btn" title="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+            <button class="whizchat-close" id="whizchat-close-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </div>
         </div>
 
+        <div id="whizchat-settings-panel" class="whizchat-settings-panel" style="display: none;"></div>
         <div class="whizchat-messages" id="whizchat-messages"></div>
 
         <div class="whizchat-faq" id="whizchat-faq" style="display: none;">
-          <div class="whizchat-faq-title">שאלות נפוצות:</div>
+          <div class="whizchat-faq-title">Frequently Asked:</div>
           <div class="whizchat-faq-list" id="whizchat-faq-list"></div>
         </div>
 
         <div class="whizchat-input-area">
           <input type="file" id="whizchat-file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
-          <button class="whizchat-attach" id="whizchat-attach" title="צרף קובץ">
+          <button class="whizchat-attach" id="whizchat-attach" title="Attach file">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
           </button>
-          <input type="text" class="whizchat-input" id="whizchat-input" placeholder="הקלד הודעה..." />
+          <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Type a message..." />
           <button class="whizchat-send" id="whizchat-send">
             <svg viewBox="0 0 24 24">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -537,10 +772,94 @@
 
     if (state.isOnline) {
       dot.classList.remove('offline');
-      text.textContent = 'מחובר';
+      text.textContent = 'Online';
     } else {
       dot.classList.add('offline');
-      text.textContent = 'לא מחובר';
+      text.textContent = 'Offline';
+    }
+  }
+
+  // Render settings panel
+  function renderSettings() {
+    var panel = document.getElementById('whizchat-settings-panel');
+    var btn = document.getElementById('whizchat-settings-btn');
+
+    if (!state.showSettings) {
+      panel.style.display = 'none';
+      btn.classList.remove('active');
+      return;
+    }
+
+    btn.classList.add('active');
+    panel.style.display = 'block';
+
+    var pushControl = '';
+    if (state.pushPermission === 'granted') {
+      pushControl = '<button class="whizchat-toggle ' + (state.pushEnabled ? 'on' : '') + '" id="whizchat-push-toggle"></button>';
+    } else if (state.pushPermission !== 'denied') {
+      pushControl = '<button class="whizchat-enable-btn" id="whizchat-push-enable">Enable</button>';
+    } else {
+      pushControl = '<span class="whizchat-setting-note">Notifications blocked</span>';
+    }
+
+    panel.innerHTML =
+      '<div class="whizchat-settings-title">Notification Settings</div>' +
+      '<div class="whizchat-setting-item">' +
+        '<div class="whizchat-setting-label">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />' +
+            '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />' +
+          '</svg>' +
+          'Sounds' +
+        '</div>' +
+        '<button class="whizchat-toggle ' + (state.soundEnabled ? 'on' : '') + '" id="whizchat-sound-toggle"></button>' +
+      '</div>' +
+      '<div class="whizchat-setting-item">' +
+        '<div class="whizchat-setting-label">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />' +
+            '<path d="M13.73 21a2 2 0 0 1-3.46 0" />' +
+          '</svg>' +
+          'Notifications' +
+        '</div>' +
+        pushControl +
+      '</div>';
+
+    // Bind settings events
+    var soundToggle = document.getElementById('whizchat-sound-toggle');
+    if (soundToggle) {
+      soundToggle.onclick = function() {
+        state.soundEnabled = !state.soundEnabled;
+        try { localStorage.setItem(STORAGE_SOUND_KEY, JSON.stringify(state.soundEnabled)); } catch (e) {}
+        renderSettings();
+      };
+    }
+
+    var pushToggle = document.getElementById('whizchat-push-toggle');
+    if (pushToggle) {
+      pushToggle.onclick = function() {
+        state.pushEnabled = !state.pushEnabled;
+        try { localStorage.setItem(STORAGE_PUSH_KEY, JSON.stringify(state.pushEnabled)); } catch (e) {}
+        renderSettings();
+      };
+    }
+
+    var pushEnable = document.getElementById('whizchat-push-enable');
+    if (pushEnable) {
+      pushEnable.onclick = requestPushPermission;
+    }
+  }
+
+  // Update unread badge
+  function updateUnreadBadge() {
+    var badge = document.getElementById('whizchat-unread-badge');
+    if (!badge) return;
+
+    if (state.unreadCount > 0 && !state.isOpen) {
+      badge.style.display = 'flex';
+      badge.textContent = state.unreadCount > 99 ? '99+' : state.unreadCount;
+    } else {
+      badge.style.display = 'none';
     }
   }
 
@@ -562,7 +881,8 @@
       body: JSON.stringify({
         wpUserId: wpUserId,
         wpUserEmail: wpUserEmail,
-        wpUserName: wpUserName
+        wpUserName: wpUserName,
+        wpUserAvatar: wpUserAvatar
       })
     })
     .then(function(res) { return res.json(); })
@@ -718,6 +1038,10 @@
       window.classList.add('open');
       iconChat.style.display = 'none';
       iconClose.style.display = 'block';
+      state.unreadCount = 0;
+      state.showSettings = false;
+      updateUnreadBadge();
+      renderSettings();
 
       if (!state.conversationId) {
         initChat();
@@ -758,6 +1082,73 @@
         uploadFile(file);
       }
     };
+
+    // Settings button
+    document.getElementById('whizchat-settings-btn').onclick = function() {
+      state.showSettings = !state.showSettings;
+      renderSettings();
+    };
+  }
+
+  // Poll for new messages (with notifications)
+  function pollMessages() {
+    if (!state.conversationId) return;
+
+    var lastMessage = state.messages[state.messages.length - 1];
+    var afterParam = lastMessage ? '&after=' + lastMessage.id : '';
+
+    fetch(API_BASE_URL + '/api/chat/messages?conversationId=' + state.conversationId + afterParam + '&viewerType=customer')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.messages && data.messages.length > 0) {
+          var newAgentMessages = data.messages.filter(function(m) {
+            return m.senderType === 'agent' && m.id !== state.lastMessageId;
+          });
+
+          // Trigger notifications for new agent messages
+          if (newAgentMessages.length > 0) {
+            var latestMsg = newAgentMessages[newAgentMessages.length - 1];
+            state.lastMessageId = latestMsg.id;
+
+            // Play sound
+            playNotificationSound();
+
+            // Show push notification if widget is closed
+            if (!state.isOpen || document.visibilityState !== 'visible') {
+              showPushNotification('New Message', latestMsg.content.substring(0, 100));
+              if (!state.isOpen) {
+                state.unreadCount += newAgentMessages.length;
+                updateUnreadBadge();
+              }
+            }
+          }
+
+          // Add new messages
+          var existingIds = {};
+          state.messages.forEach(function(m) { existingIds[m.id] = true; });
+          data.messages.forEach(function(m) {
+            if (!existingIds[m.id]) {
+              state.messages.push(m);
+            }
+          });
+
+          if (state.isOpen) {
+            renderMessages();
+          }
+        }
+      })
+      .catch(function(error) {
+        // Silent fail
+      });
+  }
+
+  // Start polling
+  function startPolling() {
+    setInterval(function() {
+      if (state.conversationId) {
+        pollMessages();
+      }
+    }, state.isOpen ? 3000 : 10000);
   }
 
   // Initialize
@@ -765,6 +1156,7 @@
     createStyles();
     createWidget();
     bindEvents();
+    startPolling();
     console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized');
   }
 

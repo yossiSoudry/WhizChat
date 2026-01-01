@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = chatInitSchema.parse(body);
 
-    const { wpUserId, wpUserEmail, wpUserName, anonUserId } = validatedData;
+    const { wpUserId, wpUserEmail, wpUserName, wpUserAvatar, anonUserId } = validatedData;
 
     // Find or create conversation
     let conversation = null;
@@ -66,11 +66,22 @@ export async function POST(request: NextRequest) {
           wpUserId: wpUserId || null,
           wpUserEmail: wpUserEmail || null,
           wpUserName: wpUserName || null,
+          wpUserAvatar: wpUserAvatar || null,
           anonUserId: anonUserId || null,
           status: "active",
         },
         include: {
           messages: true,
+        },
+      });
+    } else if (wpUserId && (wpUserName || wpUserAvatar || wpUserEmail)) {
+      // Update user info if it has changed (for existing conversations)
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          ...(wpUserName && { wpUserName }),
+          ...(wpUserEmail && { wpUserEmail }),
+          ...(wpUserAvatar && { wpUserAvatar }),
         },
       });
     }
