@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.2.0';
+  var WIDGET_VERSION = '1.3.0';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -26,15 +26,19 @@
     lastMessageId: null,
   };
 
-  // Config from window object
+  // Config from window object (can be overridden by WordPress config)
   var config = window.WHIZCHAT_CONFIG || {};
-  var position = config.position || 'right';
-  var primaryColor = config.primaryColor || '#A31CAF';
-  var secondaryColor = config.secondaryColor || '#39C3EF';
   var wpUserId = config.wpUserId;
   var wpUserEmail = config.wpUserEmail;
   var wpUserName = config.wpUserName;
   var wpUserAvatar = config.wpUserAvatar;
+
+  // Widget appearance - will be updated from API settings
+  var widgetConfig = {
+    position: config.position || 'right',
+    primaryColor: config.primaryColor || '#C026D3',
+    secondaryColor: config.secondaryColor || '#A21CAF'
+  };
 
   // Load settings from localStorage
   try {
@@ -121,19 +125,40 @@
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
+  // Update widget colors dynamically
+  function updateWidgetColors() {
+    var widget = document.querySelector('.whizchat-widget');
+    if (widget) {
+      widget.style.setProperty('--widget-primary', widgetConfig.primaryColor);
+      widget.style.setProperty('--widget-secondary', widgetConfig.secondaryColor);
+    }
+  }
+
   // Create widget styles
   function createStyles() {
     var style = document.createElement('style');
+    style.id = 'whizchat-styles';
     style.textContent = `
       .whizchat-widget {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         position: fixed;
         bottom: 20px;
-        ${position}: 20px;
+        right: 20px;
+        left: auto;
         z-index: 999999;
         direction: ltr;
-        --widget-primary: ${primaryColor};
-        --widget-secondary: ${secondaryColor};
+        --widget-primary: ${widgetConfig.primaryColor};
+        --widget-secondary: ${widgetConfig.secondaryColor};
+      }
+
+      .whizchat-widget.position-left {
+        left: 20px;
+        right: auto;
+      }
+
+      .whizchat-widget.position-right {
+        right: 20px;
+        left: auto;
       }
 
       .whizchat-button {
@@ -633,7 +658,7 @@
   // Create widget HTML
   function createWidget() {
     var container = document.createElement('div');
-    container.className = 'whizchat-widget';
+    container.className = 'whizchat-widget position-' + widgetConfig.position;
     container.id = 'whizchat-widget';
 
     container.innerHTML = `
@@ -893,6 +918,28 @@
       state.welcomeMessage = data.settings.welcomeMessage;
       state.faqItems = data.settings.faqItems || [];
       state.isLoading = false;
+
+      // Apply widget settings from API (if not overridden by WordPress config)
+      if (data.settings.widget) {
+        var apiWidget = data.settings.widget;
+        // Only use API settings if WordPress config didn't provide them
+        if (!config.primaryColor && apiWidget.primaryColor) {
+          widgetConfig.primaryColor = apiWidget.primaryColor;
+        }
+        if (!config.secondaryColor && apiWidget.secondaryColor) {
+          widgetConfig.secondaryColor = apiWidget.secondaryColor;
+        }
+        if (!config.position && apiWidget.position) {
+          widgetConfig.position = apiWidget.position;
+          // Update position class
+          var widget = document.getElementById('whizchat-widget');
+          if (widget) {
+            widget.className = 'whizchat-widget position-' + widgetConfig.position;
+          }
+        }
+        // Update colors
+        updateWidgetColors();
+      }
 
       renderMessages();
       renderFAQ();

@@ -715,6 +715,53 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Embed Code */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <Label className="flex items-center gap-2">
+                      <Share className="w-4 h-4" />
+                      קוד להטמעה
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      העתק את הקוד הבא והוסף אותו לאתר שלך (לפני סגירת תגית body)
+                    </p>
+                    <div className="relative">
+                      <pre className="p-4 rounded-lg bg-muted/50 border text-xs overflow-x-auto whitespace-pre-wrap break-all font-mono" dir="ltr">
+{`<script>
+  window.WHIZCHAT_API_URL = '${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}';
+  window.WHIZCHAT_CONFIG = {
+    position: '${settings.widget.position}',
+    primaryColor: '${settings.widget.primaryColor}',
+    secondaryColor: '${settings.widget.secondaryColor}'
+  };
+</script>
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0" defer></script>`}
+                      </pre>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 left-2"
+                        onClick={() => {
+                          const code = `<script>
+  window.WHIZCHAT_API_URL = '${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}';
+  window.WHIZCHAT_CONFIG = {
+    position: '${settings.widget.position}',
+    primaryColor: '${settings.widget.primaryColor}',
+    secondaryColor: '${settings.widget.secondaryColor}'
+  };
+</script>
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0" defer></script>`;
+                          navigator.clipboard.writeText(code);
+                        }}
+                      >
+                        העתק
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      לוורדפרס: הוסף את הקוד ב-functions.php עם add_action('wp_footer', ...)
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
