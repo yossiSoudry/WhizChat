@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { createServiceClient } from "@/lib/supabase/server";
 import { updateConversationStatusSchema } from "@/lib/validations/admin";
 
 // GET single conversation with all messages
@@ -25,6 +26,11 @@ export async function GET(
             status: true,
             waStatus: true,
             waMessageId: true,
+            messageType: true,
+            fileUrl: true,
+            fileName: true,
+            fileSize: true,
+            fileMimeType: true,
           },
         },
       },
@@ -123,7 +129,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Archive conversation
+// DELETE - Archive conversation and delete files from storage
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -133,6 +139,17 @@ export async function DELETE(
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
+      include: {
+        messages: {
+          where: {
+            fileUrl: { not: null },
+          },
+          select: {
+            id: true,
+            fileUrl: true,
+          },
+        },
+      },
     });
 
     if (!conversation) {
@@ -142,6 +159,48 @@ export async function DELETE(
       );
     }
 
+    // Delete files from Supabase Storage
+    const filesWithUrls = conversation.messages.filter((m) => m.fileUrl);
+
+    if (filesWithUrls.length > 0) {
+      const supabase = createServiceClient();
+
+      // Extract storage paths from URLs
+      // URL format: https://xxx.supabase.co/storage/v1/object/public/chat-files/conversationId/timestamp-filename
+      const storagePaths = filesWithUrls
+        .map((m) => {
+          if (!m.fileUrl) return null;
+          const match = m.fileUrl.match(/\/chat-files\/(.+)$/);
+          return match ? match[1] : null;
+        })
+        .filter((path): path is string => path !== null);
+
+      if (storagePaths.length > 0) {
+        const { error: deleteError } = await supabase.storage
+          .from("chat-files")
+          .remove(storagePaths);
+
+        if (deleteError) {
+          console.error("Failed to delete files from storage:", deleteError);
+          // Continue anyway - mark as archived even if file deletion fails
+        } else {
+          console.log(`Deleted ${storagePaths.length} files from storage for conversation ${id}`);
+        }
+      }
+    }
+
+    // Clear file URLs from messages (set to null)
+    await prisma.message.updateMany({
+      where: {
+        conversationId: id,
+        fileUrl: { not: null },
+      },
+      data: {
+        fileUrl: null,
+      },
+    });
+
+    // Archive conversation
     await prisma.conversation.update({
       where: { id },
       data: {
@@ -150,7 +209,10 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      deletedFiles: filesWithUrls.length,
+    });
   } catch (error) {
     console.error("Archive conversation error:", error);
     return NextResponse.json(

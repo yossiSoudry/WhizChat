@@ -66,6 +66,11 @@ export async function GET(request: NextRequest) {
         source: true,
         createdAt: true,
         status: true,
+        messageType: true,
+        fileUrl: true,
+        fileName: true,
+        fileSize: true,
+        fileMimeType: true,
       },
     });
 

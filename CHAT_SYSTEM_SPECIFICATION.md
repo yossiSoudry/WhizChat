@@ -3581,10 +3581,230 @@ Authentication > URL Configuration:
 
 ---
 
+## סיכום שינויים בגרסה 1.2
+
+### תכונות חדשות
+
+#### 1. התראות WhatsApp לנציגים
+- שדות חדשים ב-Agent: `phone`, `receiveWhatsappNotifications`
+- התראה אוטומטית לנציגים רלוונטיים בכל הודעה חדשה מלקוח
+- הודעת WhatsApp כוללת: שם הלקוח, תצוגה מקדימה של ההודעה, קישור ישיר לשיחה
+- הגדרות בדף Settings > טאב WhatsApp
+
+#### 2. קישור ישיר לשיחה
+- Route חדש: `/chat/[id]` - מפנה אוטומטית לדף הראשי עם השיחה הנבחרת
+- שימוש ב-sessionStorage להעברת מזהה השיחה
+- Dashboard URL: `https://whiz-chat.vercel.app`
+
+#### 3. תמונות פרופיל לנציגים
+- העלאת תמונות ל-Supabase Storage (bucket: `avatars`)
+- Cropper מובנה עם יחס 1:1 (עיגול) וזום
+- ספריית `@diceui/cropper` לחיתוך תמונות
+- API: `/api/admin/agents/[id]/avatar` (POST, DELETE)
+- תמונות נציגים מוצגות בסיידבר ובהודעות בצ'אט
+
+#### 4. דף הגדרות חשבון אישי
+- Route חדש: `/account`
+- נגיש מתפריט המשתמש בסיידבר
+- עריכת: שם, טלפון, תמונת פרופיל
+- הגדרות התראות WhatsApp
+- שינוי סיסמה (עם אימות סיסמה נוכחית)
+- API: `/api/account` (GET, PUT), `/api/account/password` (PUT)
+
+#### 5. כפתור הצגת סיסמה
+- קומפוננטת `PasswordInput` חדשה
+- אייקון עין להצגת/הסתרת הסיסמה
+- מיושם בכל שדות הסיסמה במערכת: login, agents, settings, account
+
+#### 6. הגבלות הרשאות נציגים
+- נציגים לא יכולים לגשת לעמוד `/agents` (רק מנהלים)
+- נציגים לא רואים כפתור מחיקה/כיבוי לעצמם
+- נציגים יכולים לערוך רק את עצמם דרך `/account`
+
+### תיקוני באגים
+
+- תיקון middleware שחסם widget.js (הוספת `.js`, `.css`, `.json` ל-exclude)
+- תיקון בורדר מיותר ב-input של שליחת הודעה בצ'אט
+- הסרת יצירת נציג אוטומטי `dev@whizchat.local` מ-presence API
+- תיקון אווטר נציג בהודעות צ'אט (כעת מציג תמונה אמיתית)
+
+### שינויי DB Schema
+
+```prisma
+model Agent {
+  // שדות חדשים:
+  phone                        String?  @map("phone")
+  receiveWhatsappNotifications Boolean  @default(false) @map("receive_whatsapp_notifications")
+}
+```
+
+### קבצים חדשים
+
+```
+app/(dashboard)/account/page.tsx           - דף הגדרות חשבון
+app/(dashboard)/chat/[id]/page.tsx         - Redirect לשיחה ספציפית
+app/api/account/route.ts                   - API עדכון פרופיל
+app/api/account/password/route.ts          - API שינוי סיסמה
+app/api/admin/agents/[id]/avatar/route.ts  - API תמונת פרופיל
+components/ui/avatar-upload.tsx            - קומפוננטת העלאת תמונה
+components/ui/password-input.tsx           - קומפוננטת input עם הצגת סיסמה
+components/ui/cropper.tsx                  - קומפוננטת חיתוך תמונות
+components/ui/dialog.tsx                   - קומפוננטת דיאלוג
+components/ui/slider.tsx                   - קומפוננטת סליידר
+lib/notifications/whatsapp-notifications.ts - פונקציית התראות WhatsApp
+```
+
+### הגדרות Supabase Storage
+
+יש ליצור bucket בשם `avatars`:
+1. Supabase Dashboard > Storage > New bucket
+2. שם: `avatars`, סמן Public
+3. הוסף Policies:
+   - SELECT: `true` (לכולם)
+   - INSERT: `authenticated` (למשתמשים מחוברים)
+   - DELETE: `authenticated` (למשתמשים מחוברים)
+
+---
+
+## שלבים שהושלמו
+
+| שלב | סטטוס |
+|-----|--------|
+| שלב 1: תשתית בסיסית | ✅ הושלם |
+| שלב 2: API Backend | ✅ הושלם |
+| שלב 3: Widget | ✅ הושלם |
+| שלב 4: דשבורד ניהול | ✅ הושלם |
+| שלב 5: הגדרות ו-FAQ | ✅ הושלם |
+| שלב 6: Cron Jobs ותחזוקה | 🔄 חלקי (ארכיון ידני קיים) |
+| שלב 7: הטמעה ובדיקות | ✅ הושלם (פועל ב-whizmanage.com) |
+
+## שלבים הבאים (אופציונליים)
+
+1. ~~**Browser Push Notifications** - התראות דפדפן לנציגים כשמגיעה הודעה~~ ✅ הושלם
+2. ~~**צליל התראה** - צליל כשמגיעה הודעה חדשה בדשבורד~~ ✅ הושלם
+3. **Cron Job לארכיון** - ארכיון אוטומטי של שיחות ישנות (>30 יום)
+4. ~~**שליחת קבצים בצ'אט** - תמונות, מסמכים, קבצים~~ ✅ הושלם
+5. **אימוג'י פיקר** - בחירת אימוג'ים בהודעות
+6. **חיפוש בשיחות** - חיפוש טקסט בהודעות
+7. **סטטיסטיקות מתקדמות** - גרפים וניתוחים
+8. **ייצוא שיחות** - ייצוא ל-PDF/Excel
+
+---
+
+## 15. שליחת קבצים בצ'אט
+
+### 15.1 סקירה
+מערכת שליחת קבצים בצ'אט מאפשרת ללקוחות ולנציגים לשלוח תמונות, מסמכים וקבצים.
+
+### 15.2 סוגי קבצים נתמכים
+
+| קטגוריה | סוגי MIME | סיומות |
+|----------|-----------|---------|
+| תמונות | image/jpeg, image/png, image/gif, image/webp, image/svg+xml | jpg, png, gif, webp, svg |
+| מסמכים | application/pdf, application/msword, etc. | pdf, doc, docx, xls, xlsx, ppt, pptx |
+| טקסט | text/plain, text/csv, application/json | txt, csv, json |
+| ארכיון | application/zip, application/x-rar-compressed | zip, rar |
+| אודיו | audio/mpeg, audio/wav, audio/ogg, audio/webm | mp3, wav, ogg |
+| וידאו | video/mp4, video/webm, video/quicktime | mp4, webm, mov |
+
+### 15.3 מגבלות
+- גודל מקסימלי: **10MB** לקובץ
+- אחסון: **Supabase Storage** (bucket: chat-files)
+
+### 15.4 שדות Message חדשים
+
+```prisma
+model Message {
+  // ... שדות קיימים
+  messageType   MessageType @default(text)
+  fileUrl       String?
+  fileName      String?
+  fileSize      Int?
+  fileMimeType  String?
+}
+
+enum MessageType {
+  text
+  image
+  file
+  audio
+  video
+}
+```
+
+### 15.5 API Endpoints
+
+**Widget (לקוח):** `POST /api/chat/upload`
+**Dashboard (נציג):** `POST /api/admin/messages/upload`
+
+### 15.6 קבצים נוצרו/עודכנו
+
+- `prisma/schema.prisma` - enum MessageType + שדות קובץ
+- `app/api/chat/upload/route.ts` - API להעלאה מווידג'ט
+- `app/api/admin/messages/upload/route.ts` - API להעלאה מדשבורד
+- `app/api/chat/messages/route.ts` - עודכן להחזיר שדות קובץ
+- `app/api/admin/conversations/[id]/route.ts` - עודכן להחזיר שדות קובץ
+- `components/dashboard/file-message.tsx` - קומפוננט תצוגת קובץ
+- `components/dashboard/chat-view.tsx` - עודכן לתמוך בקבצים
+- `widget/types.ts` - עודכן עם שדות קובץ
+- `widget/ChatWidget.tsx` - עודכן לתמוך בקבצים
+- `public/widget.js` - עודכן לתמוך בקבצים
+- `scripts/setup-storage.ts` - סקריפט ליצירת bucket
+
+### 15.7 הפעלה
+```bash
+# יצירת הבאקט ב-Supabase (פעם אחת)
+npx tsx scripts/setup-storage.ts
+```
+
+---
+
+## 16. צליל התראות ו-Push Notifications
+
+### 16.1 סקירה
+מערכת התראות לנציגים בדשבורד הכוללת:
+- **צליל התראה** - צליל כשמגיעה הודעה חדשה (נוצר באמצעות Web Audio API)
+- **Browser Push Notifications** - התראות דפדפן כשהטאב לא פעיל
+
+### 16.2 קבצים חדשים
+
+```
+hooks/use-notification-sound.ts  - Hook לניהול צליל התראה
+hooks/use-push-notifications.ts  - Hook לניהול Push Notifications
+```
+
+### 16.3 תכונות
+
+#### צליל התראה
+- צליל נעים (two-tone) נוצר באמצעות Web Audio API (ללא צורך בקובץ חיצוני)
+- כפתור הפעלה/כיבוי בכותרת הדשבורד
+- שמירת העדפות ב-localStorage
+- עוצמה מותאמת (volume control)
+
+#### Push Notifications
+- התראות דפדפן כשהטאב לא פעיל
+- דורש אישור חד-פעמי מהמשתמש
+- Service Worker לטיפול בהתראות (כבר קיים ב-`public/sw.js`)
+- לחיצה על ההתראה מחזירה לדשבורד
+
+### 16.4 ממשק משתמש
+- כפתור פעמון (Bell) להפעלת Push Notifications
+- כפתור רמקול (Volume) להפעלת/כיבוי צליל
+- צבע סגול כשמופעל, אפור כשכבוי
+- Tooltip מסביר את המצב
+
+### 16.5 לוגיקה
+ההתראות מופעלות כאשר:
+1. מספר ההודעות שלא נקראו גדל (unreadCount)
+2. זו לא הטעינה הראשונית (previousUnreadCount > 0)
+3. הצליל/התראות מופעלים בהגדרות המשתמש
+
+---
+
 ## מסמך זה נוצר לצורך פיתוח מערכת WhizChat
 
-**גרסה:** 1.1
-**תאריך:** דצמבר 2024
+**גרסה:** 1.3
+**תאריך:** ינואר 2025
 **מחבר:** Claude AI
 
-לשאלות ועדכונים - פתח צ'אט חדש עם מסמך זה 😊
+לשאלות ועדכונים - פתח צ'אט חדש עם מסמך זה

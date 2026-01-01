@@ -51,6 +51,14 @@ enum MessageStatus {
   read
 }
 
+enum MessageType {
+  text
+  image
+  file
+  audio
+  video
+}
+
 enum AgentRole {
   admin
   agent
@@ -124,6 +132,15 @@ model Message {
 
   // Content
   content String
+
+  // Message type (text, image, file, audio, video)
+  messageType MessageType @default(text) @map("message_type")
+
+  // File attachment (for non-text messages)
+  fileUrl      String? @map("file_url")
+  fileName     String? @map("file_name")
+  fileSize     Int?    @map("file_size")
+  fileMimeType String? @map("file_mime_type")
 
   // Sender Info
   senderType SenderType    @map("sender_type")

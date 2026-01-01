@@ -6,6 +6,11 @@ export interface Message {
   source: "widget" | "dashboard" | "whatsapp";
   createdAt: string;
   status?: "sent" | "delivered" | "read";
+  messageType?: "text" | "image" | "file" | "audio" | "video";
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileMimeType?: string | null;
 }
 
 export interface FAQItem {

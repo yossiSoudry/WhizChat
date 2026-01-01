@@ -4,6 +4,7 @@ import type { Agent, AgentRole } from "@prisma/client";
 
 export type AuthenticatedAgent = {
   id: string;
+  userId: string;
   authUserId: string;
   email: string;
   name: string;
@@ -11,6 +12,8 @@ export type AuthenticatedAgent = {
   role: AgentRole;
   isActive: boolean;
   isOnline: boolean;
+  phone: string | null;
+  receiveWhatsappNotifications: boolean;
 };
 
 export type AuthResult =
@@ -51,6 +54,8 @@ export async function getAuthenticatedAgent(): Promise<AuthResult> {
         role: true,
         isActive: true,
         isOnline: true,
+        phone: true,
+        receiveWhatsappNotifications: true,
       },
     });
 
@@ -72,7 +77,10 @@ export async function getAuthenticatedAgent(): Promise<AuthResult> {
 
     return {
       success: true,
-      agent,
+      agent: {
+        ...agent,
+        userId: agent.authUserId, // alias for convenience
+      },
     };
   } catch (error) {
     console.error("Auth error:", error);

@@ -43,11 +43,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If conversation is archived, unarchive it when customer sends a new message
     if (conversation.isArchived) {
-      return corsResponse(
-        { error: "Conversation is archived" },
-        { status: 400 }
-      );
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          isArchived: false,
+          status: "active",
+        },
+      });
     }
 
     // Create message with explicit status

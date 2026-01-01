@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { formatTime, cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAgent } from "@/contexts/agent-context";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,43 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/animate-ui/components/radix/tooltip";
+import { FileMessage } from "./file-message";
+import { ImagePreviewModal } from "./image-preview-modal";
+
+// Format date for message separators (היום, אתמול, יום שלישי, or full date)
+function formatDateSeparator(dateString: string): string {
+  const date = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  // Reset times to midnight for comparison
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+  const diffDays = Math.floor((todayOnly.getTime() - dateOnly.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (dateOnly.getTime() === todayOnly.getTime()) {
+    return "היום";
+  }
+
+  if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+    return "אתמול";
+  }
+
+  // Within last 7 days - show day name
+  if (diffDays < 7) {
+    return date.toLocaleDateString('he-IL', { weekday: 'long' });
+  }
+
+  // Older than a week - show full date
+  return date.toLocaleDateString('he-IL', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
 interface Message {
   id: string;
@@ -47,6 +85,13 @@ interface Message {
   createdAt: string;
   status: "sent" | "delivered" | "read";
   waStatus?: "sent" | "delivered" | "read" | "failed" | null;
+  messageType?: "text" | "image" | "file" | "audio" | "video";
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  fileMimeType?: string | null;
+  isUploading?: boolean;
+  localPreviewUrl?: string;
 }
 
 interface ConversationDetails {
@@ -125,6 +170,7 @@ function ChatViewSkeleton() {
 }
 
 export function ChatView({ conversationId, onClose, onStatusChange, onRead, showBackButton = false }: ChatViewProps) {
+  const { agent } = useAgent();
   const [conversation, setConversation] = useState<ConversationDetails | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -133,8 +179,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [customerIsTyping, setCustomerIsTyping] = useState(false);
   const [customerIsOnline, setCustomerIsOnline] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Store onRead in a ref to avoid dependency issues
@@ -387,6 +436,127 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     }
   }
 
+  async function handleArchive() {
+    if (!confirm("האם אתה בטוח שברצונך להעביר את השיחה לארכיון?\nכל הקבצים והתמונות ימחקו לצמיתות.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        onStatusChange?.();
+        onClose();
+      } else {
+        const error = await res.json();
+        alert(error.error || "שגיאה בהעברה לארכיון");
+      }
+    } catch (error) {
+      console.error("Failed to archive:", error);
+      alert("שגיאה בהעברה לארכיון");
+    }
+  }
+
+  async function handleFileUpload(file: File, caption?: string) {
+    if (!file || isUploading) return;
+
+    setIsUploading(true);
+
+    // Create temporary message ID
+    const tempId = `temp-${Date.now()}`;
+    const isImage = file.type.startsWith("image/");
+    const localPreviewUrl = isImage ? URL.createObjectURL(file) : undefined;
+
+    // Add temporary uploading message immediately
+    const tempMessage: Message = {
+      id: tempId,
+      content: caption?.trim() || file.name,
+      senderType: "agent",
+      senderName: agent?.name || null,
+      source: "dashboard",
+      createdAt: new Date().toISOString(),
+      status: "sent",
+      messageType: isImage ? "image" : "file",
+      fileName: file.name,
+      fileSize: file.size,
+      fileMimeType: file.type,
+      isUploading: true,
+      localPreviewUrl,
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("conversationId", conversationId);
+      if (caption) {
+        formData.append("caption", caption);
+      }
+
+      const res = await fetch("/api/admin/messages/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Replace temp message with real message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? data.message : m))
+        );
+      } else {
+        const error = await res.json();
+        console.error("Upload failed:", error.error);
+        // Remove temp message on error
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        alert(error.error || "שגיאה בהעלאת הקובץ");
+      }
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+      // Remove temp message on error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      alert("שגיאה בהעלאת הקובץ");
+    } finally {
+      setIsUploading(false);
+      // Cleanup local preview URL
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check if it's an image - show preview modal
+      if (file.type.startsWith("image/")) {
+        setPreviewImage(file);
+      } else {
+        // For non-image files, upload directly
+        handleFileUpload(file);
+      }
+    }
+  }
+
+  function handleImageSend(file: File, caption: string) {
+    setPreviewImage(null);
+    handleFileUpload(file, caption);
+  }
+
+  function handleImageCancel() {
+    setPreviewImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   if (isLoading) {
     return <ChatViewSkeleton />;
   }
@@ -482,6 +652,10 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                   פתח מחדש
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={handleArchive} className="text-orange-600 focus:text-orange-600">
+                <Archive className="w-4 h-4 ml-2" />
+                העבר לארכיון
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onClose} className="text-destructive focus:text-destructive">
                 <X className="w-4 h-4 ml-2" />
@@ -499,19 +673,6 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         onScroll={handleScroll}
       >
         <div className="px-4 py-6 pb-24 space-y-3">
-          {/* Date separator - can be added for message grouping */}
-          {messages.length > 0 && (
-            <div className="flex items-center justify-center mb-4">
-              <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-                {new Date(messages[0].createdAt).toLocaleDateString('he-IL', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </span>
-            </div>
-          )}
 
           {messages.map((message, index) => {
             const isAgent = message.senderType === "agent";
@@ -519,9 +680,23 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             const isCustomer = message.senderType === "customer";
             const showAvatar = index === 0 || messages[index - 1].senderType !== message.senderType;
 
+            // Check if we need to show a date separator
+            const messageDate = new Date(message.createdAt).toDateString();
+            const prevMessageDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
+            const showDateSeparator = index === 0 || messageDate !== prevMessageDate;
+
             return (
+              <div key={message.id}>
+                {/* Date separator */}
+                {showDateSeparator && (
+                  <div className="flex items-center justify-center my-4">
+                    <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                      {formatDateSeparator(message.createdAt)}
+                    </span>
+                  </div>
+                )}
+
               <Slide
-                key={message.id}
                 direction={isAgent ? "left" : "right"}
                 offset={20}
                 delay={Math.min(index * 50, 500)}
@@ -535,54 +710,79 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 {/* Agent avatar */}
                 {isAgent && showAvatar && (
                   <Avatar className="w-8 h-8 border border-border">
+                    {agent?.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={agent.name} />}
                     <AvatarFallback className="bg-brand-gradient text-white text-xs">
-                      W
+                      {agent?.name?.slice(0, 2).toUpperCase() || "W"}
                     </AvatarFallback>
                   </Avatar>
                 )}
                 {isAgent && !showAvatar && <div className="w-8" />}
 
                 {/* Message bubble */}
-                <div
-                  className={cn(
-                    "max-w-[70%] animate-scale-in",
-                    isSystem && "max-w-[85%]"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "px-4 py-2.5 rounded-2xl",
-                      isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
-                      isCustomer && "bg-card border border-border rounded-tl-sm",
-                      isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2"
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                      {message.content}
-                    </p>
-                  </div>
+                {(() => {
+                  const isFileMessage = message.messageType && message.messageType !== "text";
+                  const isImageMessage = message.messageType === "image";
 
-                  {/* Message meta */}
-                  {!isSystem && (
+                  return (
                     <div
                       className={cn(
-                        "flex items-center gap-1.5 mt-1 px-1",
-                        isAgent ? "justify-start" : "justify-end"
+                        "max-w-[70%] animate-scale-in",
+                        isSystem && "max-w-[85%]"
                       )}
                     >
-                      <span className="text-[11px] text-muted-foreground">
-                        {formatTime(message.createdAt)}
-                      </span>
-                      {/* Show status for agent messages (from agent's perspective in dashboard) */}
-                      {isAgent && <MessageStatus status={message.status} />}
-                      {message.source === "whatsapp" && (
-                        <span className="text-[11px] text-emerald-500 font-medium">
-                          WA
-                        </span>
+                      <div
+                        className={cn(
+                          "rounded-2xl",
+                          // Smaller padding for images, normal for text/files
+                          isImageMessage ? "p-1.5" : isFileMessage ? "p-2" : "px-4 py-2.5",
+                          isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
+                          isCustomer && "bg-card border border-border rounded-tl-sm",
+                          isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2"
+                        )}
+                      >
+                        {/* File/Image message */}
+                        {isFileMessage ? (
+                          <FileMessage
+                            messageType={message.messageType!}
+                            fileUrl={message.fileUrl || ""}
+                            fileName={message.fileName || "file"}
+                            fileSize={message.fileSize || 0}
+                            fileMimeType={message.fileMimeType || "application/octet-stream"}
+                            isAgent={isAgent}
+                            isUploading={message.isUploading}
+                            localPreviewUrl={message.localPreviewUrl}
+                            caption={message.content}
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                            {message.content}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Message meta */}
+                      {!isSystem && (
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 mt-1 px-1",
+                            isAgent ? "justify-start" : "justify-end"
+                          )}
+                        >
+                          <span className="text-[11px] text-muted-foreground">
+                            {formatTime(message.createdAt)}
+                          </span>
+                          {/* Show status for agent messages (from agent's perspective in dashboard) */}
+                          {isAgent && <MessageStatus status={message.status} />}
+                          {message.source === "whatsapp" && (
+                            <span className="text-[11px] text-emerald-500 font-medium">
+                              WA
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* Customer avatar */}
                 {isCustomer && showAvatar && (
@@ -599,6 +799,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 )}
                 {isCustomer && !showAvatar && <div className="w-8" />}
               </Slide>
+              </div>
             );
           })}
 
@@ -650,6 +851,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             className="relative"
           >
             <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.zip,.rar,audio/*,video/*"
+                onChange={handleFileSelect}
+              />
               <div className="flex items-center gap-1 pr-3">
                 <AnimateIcon animateOnHover asChild>
                   <Button
@@ -657,8 +866,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
                   >
-                    <Paperclip className="w-4.5 h-4.5" />
+                    {isUploading ? (
+                      <div className="w-4 h-4 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Paperclip className="w-4.5 h-4.5" />
+                    )}
                   </Button>
                 </AnimateIcon>
                 <Button
@@ -676,7 +891,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 value={newMessage}
                 onChange={(e) => handleInputChange(e.target.value)}
                 placeholder="הקלד הודעה..."
-                className="flex-1 h-14 bg-transparent border-none outline-none text-[15px] px-0 placeholder:text-muted-foreground"
+                className="flex-1 h-14 bg-transparent !border-0 !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!border-0 focus:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 text-[15px] px-0 placeholder:text-muted-foreground"
                 disabled={isSending}
               />
               <div className="pl-2 pr-2">
@@ -709,6 +924,15 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             </button>
           </p>
         </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <ImagePreviewModal
+          file={previewImage}
+          onSend={handleImageSend}
+          onCancel={handleImageCancel}
+        />
       )}
     </div>
   );

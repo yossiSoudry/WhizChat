@@ -69,8 +69,10 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   const [userName, setUserName] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [agentIsTyping, setAgentIsTyping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -423,6 +425,79 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     } catch (error) {
       console.error("Failed to submit contact:", error);
     }
+  }
+
+  // Upload file
+  async function uploadFile(file: File) {
+    if (!file || !conversationId || isUploading) return;
+
+    const clientMessageId = generateId();
+
+    // Create temp message
+    const tempMessage: Message = {
+      id: clientMessageId,
+      content: file.name,
+      senderType: "customer",
+      senderName: userName || null,
+      source: "widget",
+      createdAt: new Date().toISOString(),
+      status: "sent",
+      messageType: file.type.startsWith("image/") ? "image" : "file",
+      fileName: file.name,
+      fileSize: file.size,
+      fileMimeType: file.type,
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("conversationId", conversationId);
+      formData.append("clientMessageId", clientMessageId);
+      formData.append("senderType", "customer");
+      if (userName) formData.append("senderName", userName);
+
+      const res = await fetch(`${apiUrl}/api/chat/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((prev) =>
+          prev.map((m) => (m.id === clientMessageId ? data.message : m))
+        );
+      } else {
+        // Remove failed message
+        setMessages((prev) => prev.filter((m) => m.id !== clientMessageId));
+        console.error("Upload failed");
+      }
+    } catch (error) {
+      // Remove failed message
+      setMessages((prev) => prev.filter((m) => m.id !== clientMessageId));
+      console.error("Failed to upload file:", error);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadFile(file);
+    }
+  }
+
+  // Format file size
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   return (
@@ -986,6 +1061,147 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         }
 
         /* ========================================
+           File Messages
+           ======================================== */
+        .wc-file-message {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 12px;
+          background: rgba(0, 0, 0, 0.03);
+          border-radius: 12px;
+          text-decoration: none;
+          color: inherit;
+          transition: background 0.2s;
+        }
+
+        .wc-file-message:hover {
+          background: rgba(0, 0, 0, 0.06);
+        }
+
+        .wc-message.agent .wc-file-message,
+        .wc-message.bot .wc-file-message {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        .wc-message.agent .wc-file-message:hover,
+        .wc-message.bot .wc-file-message:hover {
+          background: rgba(255, 255, 255, 0.25);
+        }
+
+        .wc-file-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: var(--wc-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .wc-message.agent .wc-file-icon,
+        .wc-message.bot .wc-file-icon {
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        .wc-file-icon svg {
+          width: 20px;
+          height: 20px;
+          color: white;
+        }
+
+        .wc-file-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .wc-file-name {
+          font-size: 13px;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .wc-file-size {
+          font-size: 11px;
+          opacity: 0.7;
+        }
+
+        .wc-file-download {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.5;
+          flex-shrink: 0;
+        }
+
+        .wc-file-download svg {
+          width: 18px;
+          height: 18px;
+        }
+
+        .wc-image-message {
+          max-width: 240px;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .wc-image-message img {
+          width: 100%;
+          height: auto;
+          display: block;
+          cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .wc-image-message img:hover {
+          opacity: 0.9;
+        }
+
+        .wc-image-loading {
+          width: 200px;
+          height: 150px;
+          background: var(--wc-bg-secondary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .wc-attach-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--wc-text-secondary);
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .wc-attach-btn:hover:not(:disabled) {
+          background: var(--wc-bg-secondary);
+          color: var(--wc-text);
+        }
+
+        .wc-attach-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .wc-attach-btn svg {
+          width: 20px;
+          height: 20px;
+        }
+
+        /* ========================================
            Responsive
            ======================================== */
         @media (max-width: 480px) {
@@ -1062,7 +1278,38 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                 {/* Messages */}
                 {messages.map((msg) => (
                   <div key={msg.id} className={`wc-message ${msg.senderType}`}>
-                    <div className="wc-message-bubble">{msg.content}</div>
+                    <div className="wc-message-bubble">
+                      {/* Image message */}
+                      {msg.messageType === 'image' && msg.fileUrl ? (
+                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="wc-image-message">
+                          <img src={msg.fileUrl} alt={msg.fileName || 'Image'} />
+                        </a>
+                      ) : msg.messageType && msg.messageType !== 'text' && msg.fileUrl ? (
+                        /* File message */
+                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" download={msg.fileName} className="wc-file-message">
+                          <div className="wc-file-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                          </div>
+                          <div className="wc-file-info">
+                            <div className="wc-file-name">{msg.fileName}</div>
+                            <div className="wc-file-size">{msg.fileSize ? formatFileSize(msg.fileSize) : ''}</div>
+                          </div>
+                          <div className="wc-file-download">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                          </div>
+                        </a>
+                      ) : (
+                        /* Text message */
+                        msg.content
+                      )}
+                    </div>
                     {msg.senderType !== 'system' && (
                       <div className="wc-message-meta">
                         <span className="wc-message-time">{formatTime(msg.createdAt)}</span>
@@ -1159,6 +1406,28 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
 
           {/* Input Area */}
           <div className="wc-input-area">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              style={{ display: 'none' }}
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.zip,.rar"
+              onChange={handleFileSelect}
+            />
+            <button
+              className="wc-attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              title="Attach file"
+            >
+              {isUploading ? (
+                <div className="wc-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              )}
+            </button>
             <div className="wc-input-wrapper">
               <input
                 ref={inputRef}

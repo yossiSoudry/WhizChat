@@ -126,12 +126,21 @@ export function AvatarUpload({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropperAreaData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const onCropComplete = useCallback(
+  const onCropAreaChange = useCallback(
     (_croppedArea: CropperAreaData, croppedAreaPixels: CropperAreaData) => {
       setCroppedAreaPixels(croppedAreaPixels);
     },
     []
   );
+
+  // Set initial crop when media loads
+  const onMediaLoaded = useCallback(() => {
+    // Trigger initial crop area calculation by slightly adjusting zoom
+    setTimeout(() => {
+      setZoom((prev) => prev + 0.001);
+      setTimeout(() => setZoom((prev) => prev - 0.001), 50);
+    }, 100);
+  }, []);
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -164,14 +173,17 @@ export function AvatarUpload({
   }
 
   async function handleCropConfirm() {
-    if (!imageSrc || !croppedAreaPixels) return;
+    if (!imageSrc) return;
+
+    // Use default crop if no area selected yet
+    const cropData = croppedAreaPixels || { x: 0, y: 0, width: 200, height: 200 };
 
     setIsUploading(true);
     setIsCropDialogOpen(false);
 
     try {
       // Get cropped image blob
-      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const croppedBlob = await getCroppedImg(imageSrc, cropData);
 
       // Create form data
       const formData = new FormData();
@@ -304,7 +316,8 @@ export function AvatarUpload({
                 aspectRatio={1}
                 zoom={zoom}
                 onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
+                onCropAreaChange={onCropAreaChange}
+                onMediaLoaded={onMediaLoaded}
                 minZoom={1}
                 maxZoom={3}
                 shape="circle"

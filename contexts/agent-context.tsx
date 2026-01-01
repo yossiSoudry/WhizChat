@@ -21,6 +21,8 @@ export interface Agent {
   role: AgentRole;
   isActive: boolean;
   isOnline: boolean;
+  phone: string | null;
+  receiveWhatsappNotifications: boolean;
 }
 
 interface AgentContextType {

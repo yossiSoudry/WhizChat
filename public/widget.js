@@ -15,6 +15,7 @@
     welcomeMessage: '',
     isLoading: false,
     isSending: false,
+    isUploading: false,
   };
 
   // Config from window object
@@ -35,6 +36,13 @@
   function formatTime(dateString) {
     var date = new Date(dateString);
     return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Format file size
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   // Create widget styles
@@ -306,6 +314,93 @@
           bottom: 80px;
         }
       }
+
+      .whizchat-attach {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        transition: color 0.2s;
+      }
+
+      .whizchat-attach:hover:not(:disabled) {
+        color: var(--widget-primary);
+      }
+
+      .whizchat-attach:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .whizchat-attach svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .whizchat-file-message {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .whizchat-message.customer .whizchat-file-message {
+        background: rgba(255,255,255,0.2);
+      }
+
+      .whizchat-file-icon {
+        width: 36px;
+        height: 36px;
+        background: var(--widget-primary);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .whizchat-file-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: white;
+      }
+
+      .whizchat-file-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .whizchat-file-name {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .whizchat-file-size {
+        font-size: 11px;
+        opacity: 0.7;
+      }
+
+      .whizchat-image-message {
+        max-width: 200px;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .whizchat-image-message img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -350,6 +445,12 @@
         </div>
 
         <div class="whizchat-input-area">
+          <input type="file" id="whizchat-file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
+          <button class="whizchat-attach" id="whizchat-attach" title="צרף קובץ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
           <input type="text" class="whizchat-input" id="whizchat-input" placeholder="הקלד הודעה..." />
           <button class="whizchat-send" id="whizchat-send">
             <svg viewBox="0 0 24 24">
@@ -385,7 +486,21 @@
     state.messages.forEach(function(msg) {
       var div = document.createElement('div');
       div.className = 'whizchat-message ' + msg.senderType;
-      div.innerHTML = '<div>' + escapeHtml(msg.content) + '</div><div class="whizchat-message-time">' + formatTime(msg.createdAt) + '</div>';
+
+      var content = '';
+      // Check if message has file
+      if (msg.messageType === 'image' && msg.fileUrl) {
+        content = '<a href="' + msg.fileUrl + '" target="_blank" class="whizchat-image-message"><img src="' + msg.fileUrl + '" alt="' + escapeHtml(msg.fileName || 'Image') + '" /></a>';
+      } else if (msg.messageType && msg.messageType !== 'text' && msg.fileUrl) {
+        content = '<a href="' + msg.fileUrl + '" target="_blank" download class="whizchat-file-message">' +
+          '<div class="whizchat-file-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
+          '<div class="whizchat-file-info"><div class="whizchat-file-name">' + escapeHtml(msg.fileName || 'File') + '</div><div class="whizchat-file-size">' + formatFileSize(msg.fileSize || 0) + '</div></div>' +
+          '</a>';
+      } else {
+        content = '<div>' + escapeHtml(msg.content) + '</div>';
+      }
+
+      div.innerHTML = content + '<div class="whizchat-message-time">' + formatTime(msg.createdAt) + '</div>';
       container.appendChild(div);
     });
 
@@ -534,6 +649,63 @@
     }, 500);
   }
 
+  // Upload file
+  function uploadFile(file) {
+    if (!file || !state.conversationId || state.isUploading) return;
+
+    var clientMessageId = generateId();
+    var isImage = file.type.startsWith('image/');
+    var tempMessage = {
+      id: clientMessageId,
+      content: file.name,
+      senderType: 'customer',
+      senderName: null,
+      source: 'widget',
+      createdAt: new Date().toISOString(),
+      messageType: isImage ? 'image' : 'file',
+      fileName: file.name,
+      fileSize: file.size,
+      fileMimeType: file.type,
+    };
+
+    state.messages.push(tempMessage);
+    state.isUploading = true;
+    renderMessages();
+
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('conversationId', state.conversationId);
+    formData.append('clientMessageId', clientMessageId);
+    formData.append('senderType', 'customer');
+
+    fetch(API_BASE_URL + '/api/chat/upload', {
+      method: 'POST',
+      body: formData
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.message) {
+        state.messages = state.messages.map(function(m) {
+          return m.id === clientMessageId ? data.message : m;
+        });
+      } else {
+        // Remove failed message
+        state.messages = state.messages.filter(function(m) { return m.id !== clientMessageId; });
+      }
+      state.isUploading = false;
+      renderMessages();
+    })
+    .catch(function(error) {
+      console.error('WhizChat upload error:', error);
+      state.messages = state.messages.filter(function(m) { return m.id !== clientMessageId; });
+      state.isUploading = false;
+      renderMessages();
+    });
+
+    // Reset file input
+    document.getElementById('whizchat-file-input').value = '';
+  }
+
   // Toggle window
   function toggleWindow() {
     state.isOpen = !state.isOpen;
@@ -570,6 +742,20 @@
     document.getElementById('whizchat-input').onkeypress = function(e) {
       if (e.key === 'Enter') {
         sendMessage(this.value);
+      }
+    };
+
+    // File upload events
+    document.getElementById('whizchat-attach').onclick = function() {
+      if (!state.isUploading) {
+        document.getElementById('whizchat-file-input').click();
+      }
+    };
+
+    document.getElementById('whizchat-file-input').onchange = function(e) {
+      var file = e.target.files && e.target.files[0];
+      if (file) {
+        uploadFile(file);
       }
     };
   }

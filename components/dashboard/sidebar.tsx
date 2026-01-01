@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { MessageCircle, Moon, Sun, Monitor, Settings, LogOut } from "lucide-react";
 import { ChevronUpDown } from "@/components/animate-ui/icons/chevron-up-down";
@@ -34,7 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navigation = [
   {
@@ -79,6 +79,7 @@ function UserNav() {
   const { state } = useSidebar();
   const { theme, setTheme } = useTheme();
   const { agent, logout, isAdmin } = useAgent();
+  const router = useRouter();
   const isCollapsed = state === "collapsed";
   const [mounted, setMounted] = useState(false);
 
@@ -119,6 +120,7 @@ function UserNav() {
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="size-8 border-2 border-sidebar-border">
+                  {agent?.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={displayName} />}
                   <AvatarFallback className="bg-brand-gradient text-white text-xs font-medium">
                     {initials.toUpperCase()}
                   </AvatarFallback>
@@ -145,7 +147,7 @@ function UserNav() {
             <div className="px-2 py-1.5 text-sm text-muted-foreground border-b mb-1">
               {agent?.email}
             </div>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/account")}>
               <Settings className="ml-2 size-4" />
               הגדרות חשבון
             </DropdownMenuItem>

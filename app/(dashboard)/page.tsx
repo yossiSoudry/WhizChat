@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { ConversationList } from "@/components/dashboard/conversation-list";
 import { ChatView } from "@/components/dashboard/chat-view";
 import { AgentPresence } from "@/components/dashboard/agent-presence";
-import { MessageSquare, MessageCircle, Wifi, Mail, Clock, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { MessageSquare, MessageCircle, Wifi, Mail, Clock, ChevronLeft, ChevronRight, Menu, Archive, Volume2, VolumeX, Bell, BellOff } from "lucide-react";
+import { useNotificationSound } from "@/hooks/use-notification-sound";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { cn } from "@/lib/utils";
 import { Fade } from "@/components/animate-ui/primitives/effects/fade";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
@@ -19,7 +21,7 @@ interface FilterCounts {
   unreadCount: number;
 }
 
-type FilterType = "all" | "active" | "unanswered" | "unread";
+type FilterType = "all" | "active" | "unanswered" | "unread" | "archived";
 
 interface Conversation {
   id: string;
@@ -51,8 +53,11 @@ export default function ConversationsPage() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
+  const previousUnreadCountRef = useRef<number>(-1); // -1 means not initialized yet
   const isMobile = useIsMobile();
   const { setOpenMobile } = useSidebar();
+  const { play: playNotificationSound, isEnabled: soundEnabled, setEnabled: setSoundEnabled, testSound } = useNotificationSound();
+  const { isSupported: pushSupported, isEnabled: pushEnabled, permission: pushPermission, requestPermission, showNotification } = usePushNotifications();
 
   const checkScrollButtons = useCallback(() => {
     if (filtersRef.current) {
@@ -77,22 +82,40 @@ export default function ConversationsPage() {
       const res = await fetch("/api/admin/conversations/unread-count");
       if (res.ok) {
         const data = await res.json();
+        const newUnreadCount = data.unreadCount || 0;
+
+        // Play notification sound and show push notification if unread count increased
+        // Skip on first load (-1), but play when count increases after that
+        if (previousUnreadCountRef.current >= 0 && newUnreadCount > previousUnreadCountRef.current) {
+          playNotificationSound();
+          showNotification("הודעה חדשה ב-WhizChat", {
+            body: `יש לך ${newUnreadCount} הודעות שלא נקראו`,
+            url: "/",
+          });
+        }
+        previousUnreadCountRef.current = newUnreadCount;
+
         setFilterCounts({
           activeCount: data.activeCount || 0,
           unansweredCount: data.unansweredCount || 0,
-          unreadCount: data.unreadCount || 0,
+          unreadCount: newUnreadCount,
         });
       }
     } catch (error) {
       console.error("Failed to fetch filter counts:", error);
     }
-  }, []);
+  }, [playNotificationSound, showNotification]);
 
   const fetchConversations = useCallback(async (filter: FilterType = "all") => {
     try {
-      const url = filter === "all"
-        ? "/api/admin/conversations"
-        : `/api/admin/conversations?filter=${filter}`;
+      let url: string;
+      if (filter === "archived") {
+        url = "/api/admin/conversations?archived=true";
+      } else if (filter === "all") {
+        url = "/api/admin/conversations";
+      } else {
+        url = `/api/admin/conversations?filter=${filter}`;
+      }
       const res = await fetch(url);
       const data = await res.json();
       setConversations(data.conversations || []);
@@ -176,6 +199,70 @@ export default function ConversationsPage() {
                   {conversations.filter(c => c.status === 'active').length} פעילות
                 </p>
               </div>
+            </div>
+            {/* Notification buttons */}
+            <div className="flex items-center gap-1">
+              {/* Push notifications toggle */}
+              {pushSupported && (
+                <button
+                  onClick={async () => {
+                    if (pushPermission !== "granted") {
+                      await requestPermission();
+                    }
+                  }}
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                    pushEnabled
+                      ? "bg-primary/10 text-primary hover:bg-primary/20"
+                      : pushPermission === "denied"
+                      ? "bg-destructive/10 text-destructive cursor-not-allowed"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  )}
+                  title={
+                    pushPermission === "denied"
+                      ? "התראות נחסמו בדפדפן"
+                      : pushEnabled
+                      ? "התראות דפדפן מופעלות"
+                      : "הפעל התראות דפדפן"
+                  }
+                  disabled={pushPermission === "denied"}
+                >
+                  {pushEnabled ? (
+                    <Bell className="w-4 h-4" />
+                  ) : (
+                    <BellOff className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+
+              {/* Sound toggle button - click to toggle, double-click to test */}
+              <button
+                onClick={() => {
+                  const newState = !soundEnabled;
+                  setSoundEnabled(newState);
+                  // Play test sound when enabling to activate AudioContext
+                  if (newState) {
+                    testSound();
+                  }
+                }}
+                onDoubleClick={() => {
+                  // Double-click to test sound
+                  testSound();
+                }}
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  soundEnabled
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+                title={soundEnabled ? "לחץ לכיבוי | לחץ פעמיים לבדיקה" : "לחץ להפעלת צליל התראות"}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4" />
+                ) : (
+                  <VolumeX className="w-4 h-4" />
+                )}
+              </button>
             </div>
           </div>
           {/* Filter tabs with horizontal scroll */}
@@ -272,6 +359,20 @@ export default function ConversationsPage() {
                       {filterCounts.unansweredCount}
                     </span>
                   )}
+                </button>
+              </AnimateIcon>
+              <AnimateIcon animateOnHover asChild>
+                <button
+                  onClick={() => handleFilterChange("archived")}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0",
+                    activeFilter === "archived"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "text-muted-foreground bg-muted/30 border border-border/50 hover:bg-muted/50 hover:border-border"
+                  )}
+                >
+                  <Archive className="w-3.5 h-3.5 shrink-0" />
+                  ארכיון
                 </button>
               </AnimateIcon>
             </div>

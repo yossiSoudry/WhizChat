@@ -20,7 +20,8 @@
       "Bash(head:*)",
       "Bash(Remove-Item -Force -Recurse \".next\" -ErrorAction SilentlyContinue)",
       "Bash(powershell -Command:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(Remove-Item \"C:\\Users\\ASUS\\Desktop\\whizchat\\public\\sounds\" -Recurse -Force -ErrorAction SilentlyContinue)"
     ]
   }
 }
