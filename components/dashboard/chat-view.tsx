@@ -17,6 +17,10 @@ import {
   ArrowDownCircle,
   MoreVertical,
   ArrowRight,
+  Search,
+  X as XIcon,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -98,6 +102,7 @@ interface ConversationDetails {
   id: string;
   customerName: string;
   customerEmail: string | null;
+  customerAvatar: string | null;
   customerType: "wordpress" | "guest";
   contactType: "email" | "whatsapp" | "none";
   status: "active" | "closed" | "pending";
@@ -181,10 +186,16 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [customerIsOnline, setCustomerIsOnline] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<File | null>(null);
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageSearchInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Store onRead in a ref to avoid dependency issues
   const onReadRef = useRef(onRead);
@@ -394,6 +405,87 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     }
   }
 
+  // Search in messages
+  useEffect(() => {
+    if (!messageSearchQuery.trim()) {
+      setSearchResults([]);
+      setCurrentSearchIndex(0);
+      return;
+    }
+
+    const query = messageSearchQuery.toLowerCase();
+    const results: number[] = [];
+
+    messages.forEach((msg, index) => {
+      if (msg.content.toLowerCase().includes(query)) {
+        results.push(index);
+      }
+    });
+
+    setSearchResults(results);
+    setCurrentSearchIndex(0);
+
+    // Scroll to first result
+    if (results.length > 0) {
+      scrollToMessage(results[0]);
+    }
+  }, [messageSearchQuery, messages]);
+
+  // Focus search input when shown
+  useEffect(() => {
+    if (showMessageSearch && messageSearchInputRef.current) {
+      messageSearchInputRef.current.focus();
+    }
+  }, [showMessageSearch]);
+
+  function scrollToMessage(messageIndex: number) {
+    const element = messageRefs.current.get(messageIndex);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function goToNextSearchResult() {
+    if (searchResults.length === 0) return;
+    const nextIndex = (currentSearchIndex + 1) % searchResults.length;
+    setCurrentSearchIndex(nextIndex);
+    scrollToMessage(searchResults[nextIndex]);
+  }
+
+  function goToPrevSearchResult() {
+    if (searchResults.length === 0) return;
+    const prevIndex = (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+    setCurrentSearchIndex(prevIndex);
+    scrollToMessage(searchResults[prevIndex]);
+  }
+
+  function closeMessageSearch() {
+    setShowMessageSearch(false);
+    setMessageSearchQuery("");
+    setSearchResults([]);
+    setCurrentSearchIndex(0);
+  }
+
+  function highlightSearchText(text: string): React.ReactNode {
+    if (!messageSearchQuery.trim()) return text;
+
+    const query = messageSearchQuery.toLowerCase();
+    const lowerText = text.toLowerCase();
+    const index = lowerText.indexOf(query);
+
+    if (index === -1) return text;
+
+    return (
+      <>
+        {text.slice(0, index)}
+        <mark className="bg-yellow-300 text-foreground rounded px-0.5">
+          {text.slice(index, index + messageSearchQuery.length)}
+        </mark>
+        {text.slice(index + messageSearchQuery.length)}
+      </>
+    );
+  }
+
   async function handleSend() {
     if (!newMessage.trim() || isSending) return;
 
@@ -589,6 +681,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           )}
           <div className="relative">
             <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
+              {conversation.customerAvatar && (
+                <AvatarImage src={conversation.customerAvatar} alt={conversation.customerName} />
+              )}
               <AvatarFallback className="bg-primary/10 text-primary font-medium">
                 {conversation.customerName.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -634,6 +729,19 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
               <span className="hidden sm:inline">{conversation.waPhone}</span>
             </Button>
           )}
+          {/* Search messages button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowMessageSearch(!showMessageSearch)}
+            className={cn(
+              "text-muted-foreground hover:text-foreground",
+              showMessageSearch && "bg-primary/10 text-primary"
+            )}
+            title="חיפוש בהודעות"
+          >
+            <Search className="w-4 h-4" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
@@ -666,6 +774,72 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         </div>
       </div>
 
+      {/* Message search bar */}
+      {showMessageSearch && (
+        <div className="px-4 py-2 border-b bg-card flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              ref={messageSearchInputRef}
+              type="text"
+              value={messageSearchQuery}
+              onChange={(e) => setMessageSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (e.shiftKey) {
+                    goToPrevSearchResult();
+                  } else {
+                    goToNextSearchResult();
+                  }
+                } else if (e.key === "Escape") {
+                  closeMessageSearch();
+                }
+              }}
+              placeholder="חיפוש בהודעות..."
+              className="w-full h-8 pr-9 pl-3 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              dir="rtl"
+            />
+          </div>
+          {searchResults.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {currentSearchIndex + 1} / {searchResults.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={goToPrevSearchResult}
+                disabled={searchResults.length <= 1}
+              >
+                <ChevronUp className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={goToNextSearchResult}
+                disabled={searchResults.length <= 1}
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+          {messageSearchQuery && searchResults.length === 0 && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">לא נמצאו תוצאות</span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={closeMessageSearch}
+          >
+            <XIcon className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea
         className="flex-1"
@@ -685,8 +859,16 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             const prevMessageDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
             const showDateSeparator = index === 0 || messageDate !== prevMessageDate;
 
+            const isSearchResult = searchResults.includes(index);
+            const isCurrentSearchResult = searchResults[currentSearchIndex] === index;
+
             return (
-              <div key={message.id}>
+              <div
+                key={message.id}
+                ref={(el) => {
+                  if (el) messageRefs.current.set(index, el);
+                }}
+              >
                 {/* Date separator */}
                 {showDateSeparator && (
                   <div className="flex items-center justify-center my-4">
@@ -732,12 +914,15 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     >
                       <div
                         className={cn(
-                          "rounded-2xl",
+                          "rounded-2xl transition-all",
                           // Smaller padding for images, normal for text/files
                           isImageMessage ? "p-1.5" : isFileMessage ? "p-2" : "px-4 py-2.5",
                           isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
                           isCustomer && "bg-card border border-border rounded-tl-sm",
-                          isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2"
+                          isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2",
+                          // Highlight search results
+                          isCurrentSearchResult && "ring-2 ring-yellow-400 ring-offset-2",
+                          isSearchResult && !isCurrentSearchResult && "ring-1 ring-yellow-300/50"
                         )}
                       >
                         {/* File/Image message */}
@@ -755,7 +940,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                           />
                         ) : (
                           <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                            {message.content}
+                            {isSearchResult ? highlightSearchText(message.content) : message.content}
                           </p>
                         )}
                       </div>
@@ -787,6 +972,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 {/* Customer avatar */}
                 {isCustomer && showAvatar && (
                   <Avatar className="w-8 h-8 border border-border">
+                    {conversation.customerAvatar && (
+                      <AvatarImage src={conversation.customerAvatar} alt={conversation.customerName} />
+                    )}
                     <AvatarFallback className={cn(
                       "text-xs",
                       conversation.customerType === "wordpress"
@@ -813,6 +1001,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                   <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '400ms' }} />
                 </div>
                 <Avatar className="w-8 h-8 border border-border">
+                  {conversation?.customerAvatar && (
+                    <AvatarImage src={conversation.customerAvatar} alt={conversation.customerName} />
+                  )}
                   <AvatarFallback className="text-xs bg-muted text-muted-foreground">
                     {conversation?.customerName.charAt(0).toUpperCase()}
                   </AvatarFallback>

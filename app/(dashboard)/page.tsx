@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { ConversationList } from "@/components/dashboard/conversation-list";
 import { ChatView } from "@/components/dashboard/chat-view";
 import { AgentPresence } from "@/components/dashboard/agent-presence";
-import { MessageSquare, MessageCircle, Wifi, Mail, Clock, ChevronLeft, ChevronRight, Menu, Archive, Volume2, VolumeX, Bell, BellOff } from "lucide-react";
+import { MessageSquare, MessageCircle, Wifi, Mail, Clock, ChevronLeft, ChevronRight, Menu, Archive, Volume2, VolumeX, Bell, BellOff, Search, X } from "lucide-react";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ interface Conversation {
   id: string;
   customerName: string;
   customerEmail: string | null;
+  customerAvatar: string | null;
   customerType: "wordpress" | "guest";
   status: "active" | "closed" | "pending";
   contactType: "email" | "whatsapp" | "none";
@@ -52,6 +53,12 @@ export default function ConversationsPage() {
   });
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const filtersRef = useRef<HTMLDivElement>(null);
   const previousUnreadCountRef = useRef<number>(-1); // -1 means not initialized yet
   const lastNotificationTimeRef = useRef<string | null>(null); // Track last notification to avoid duplicates
@@ -87,9 +94,7 @@ export default function ConversationsPage() {
 
         // Play notification sound and show push notification if unread count increased
         // Skip on first load (-1), but play when count increases after that
-        console.log("[Notifications] prev:", previousUnreadCountRef.current, "new:", newUnreadCount);
         if (previousUnreadCountRef.current >= 0 && newUnreadCount > previousUnreadCountRef.current) {
-          console.log("[Notifications] Playing sound and showing notification!");
           playNotificationSound();
           showNotification("הודעה חדשה ב-WhizChat", {
             body: `יש לך ${newUnreadCount} הודעות שלא נקראו`,
@@ -109,41 +114,41 @@ export default function ConversationsPage() {
     }
   }, [playNotificationSound, showNotification]);
 
-  const fetchConversations = useCallback(async (filter: FilterType = "all") => {
+  const fetchConversations = useCallback(async (filter: FilterType = "all", search?: string) => {
     try {
-      let url: string;
+      const params = new URLSearchParams();
       if (filter === "archived") {
-        url = "/api/admin/conversations?archived=true";
-      } else if (filter === "all") {
-        url = "/api/admin/conversations";
-      } else {
-        url = `/api/admin/conversations?filter=${filter}`;
+        params.set("archived", "true");
+      } else if (filter !== "all") {
+        params.set("filter", filter);
       }
+      if (search) {
+        params.set("search", search);
+      }
+      const url = `/api/admin/conversations${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await fetch(url);
       const data = await res.json();
       const newConversations = data.conversations || [];
 
       // Check for new customer messages (not from agent)
       if (lastNotificationTimeRef.current !== null) {
-        const hasNewCustomerMessage = newConversations.some((conv: Conversation) => {
+        const newMessageConv = newConversations.find((conv: Conversation) => {
           // Check if this conversation has a new message from customer
           if (conv.lastMessageSenderType === "customer" && conv.lastMessageAt) {
             const lastMsgTime = new Date(conv.lastMessageAt).getTime();
             const lastNotifTime = new Date(lastNotificationTimeRef.current!).getTime();
             // If this message is newer than our last notification AND it's not the currently selected chat
             if (lastMsgTime > lastNotifTime && conv.id !== selectedId) {
-              console.log("[Notifications] New customer message detected!", conv.customerName);
               return true;
             }
           }
           return false;
         });
 
-        if (hasNewCustomerMessage) {
-          console.log("[Notifications] Playing sound for new message!");
+        if (newMessageConv) {
           playNotificationSound();
-          showNotification("הודעה חדשה ב-WhizChat", {
-            body: "יש לך הודעה חדשה מלקוח",
+          showNotification(newMessageConv.customerName, {
+            body: newMessageConv.lastMessagePreview || "הודעה חדשה",
             url: "/",
           });
         }
@@ -168,26 +173,25 @@ export default function ConversationsPage() {
     }
   }, [selectedId, playNotificationSound, showNotification]);
 
+  // Check for direct conversation link on mount only
   useEffect(() => {
-    fetchConversations(activeFilter);
-    fetchFilterCounts();
-
-    // Check for direct conversation link from /chat/[id]
     const storedConversationId = sessionStorage.getItem("selectedConversationId");
     if (storedConversationId) {
       setSelectedId(storedConversationId);
       sessionStorage.removeItem("selectedConversationId");
     }
-  }, [fetchConversations, fetchFilterCounts, activeFilter]);
+    // Initial fetch
+    fetchFilterCounts();
+  }, [fetchFilterCounts]);
 
   // Poll for new conversations and counts every 15 seconds (reduced from 5s)
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchConversations(activeFilter);
+      fetchConversations(activeFilter, debouncedSearchQuery || undefined);
       fetchFilterCounts();
     }, 15000);
     return () => clearInterval(interval);
-  }, [fetchConversations, fetchFilterCounts, activeFilter]);
+  }, [fetchConversations, fetchFilterCounts, activeFilter, debouncedSearchQuery]);
 
   const handleFilterChange = (filter: FilterType) => {
     setActiveFilter(filter);
@@ -196,9 +200,57 @@ export default function ConversationsPage() {
 
   // Stable callback for when a conversation is read
   const handleConversationRead = useCallback(() => {
-    fetchConversations(activeFilter);
+    fetchConversations(activeFilter, debouncedSearchQuery || undefined);
     fetchFilterCounts();
-  }, [fetchConversations, fetchFilterCounts, activeFilter]);
+  }, [fetchConversations, fetchFilterCounts, activeFilter, debouncedSearchQuery]);
+
+  // Handle search with debounce
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    setIsSearching(!!query);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce the actual search
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(query);
+    }, 300);
+  }, []);
+
+  // Trigger fetch when debounced search query changes
+  useEffect(() => {
+    setIsLoading(true);
+    fetchConversations(activeFilter, debouncedSearchQuery || undefined);
+  }, [debouncedSearchQuery, activeFilter, fetchConversations]);
+
+  const clearSearch = useCallback(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setIsSearching(false);
+    setShowSearchInput(false);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Focus search input when shown
+  useEffect(() => {
+    if (showSearchInput && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearchInput]);
 
   // Handle mobile chat selection
   const handleSelectConversation = useCallback((id: string) => {
@@ -242,8 +294,25 @@ export default function ConversationsPage() {
                 </p>
               </div>
             </div>
-            {/* Notification buttons */}
+            {/* Action buttons */}
             <div className="flex items-center gap-1">
+              {/* Search button */}
+              <button
+                onClick={() => setShowSearchInput(!showSearchInput)}
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  showSearchInput || isSearching
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+                title="חיפוש שיחות"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+
+              {/* Divider */}
+              <div className="w-px h-5 bg-border mx-0.5" />
+
               {/* Push notifications toggle */}
               {pushSupported && (
                 <button
@@ -307,6 +376,37 @@ export default function ConversationsPage() {
               </button>
             </div>
           </div>
+
+          {/* Search input */}
+          {showSearchInput && (
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="חיפוש לפי שם, אימייל או תוכן..."
+                  className="w-full h-9 pr-9 pl-9 rounded-lg border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  dir="rtl"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {isSearching && (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {conversations.length} תוצאות נמצאו
+                </p>
+              )}
+            </div>
+          )}
           {/* Filter tabs with horizontal scroll */}
           <div className="flex items-center pt-5 pb-2 px-1">
             {/* Right arrow - scrolls to show more content on the right (in RTL: towards start) */}
@@ -458,7 +558,7 @@ export default function ConversationsPage() {
           <ChatView
             conversationId={selectedId}
             onClose={handleBackToList}
-            onStatusChange={() => fetchConversations(activeFilter)}
+            onStatusChange={() => fetchConversations(activeFilter, debouncedSearchQuery || undefined)}
             onRead={handleConversationRead}
             showBackButton={isMobile}
           />
