@@ -716,11 +716,11 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Embed Code */}
+                  {/* Embed Code - HTML */}
                   <div className="space-y-3 pt-4 border-t">
                     <Label className="flex items-center gap-2">
                       <Share className="w-4 h-4" />
-                      קוד להטמעה
+                      קוד להטמעה - HTML / WordPress
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       העתק את הקוד הבא והוסף אותו לאתר שלך (לפני סגירת תגית body)
@@ -760,6 +760,93 @@ export default function SettingsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       לוורדפרס: הוסף את הקוד ב-functions.php עם add_action('wp_footer', ...)
+                    </p>
+                  </div>
+
+                  {/* Embed Code - Next.js */}
+                  <div className="space-y-3 pt-4 border-t">
+                    <Label className="flex items-center gap-2">
+                      <Share className="w-4 h-4" />
+                      קוד להטמעה - Next.js
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      צור קומפוננטה חדשה והוסף אותה ל-layout.tsx הראשי
+                    </p>
+                    <div className="relative">
+                      <pre className="p-4 rounded-lg bg-muted/50 border text-xs overflow-x-auto whitespace-pre-wrap break-all font-mono" dir="ltr">
+{`// components/WhizChatWidget.tsx
+'use client';
+
+import Script from 'next/script';
+
+export function WhizChatWidget() {
+  return (
+    <>
+      <Script id="whizchat-config" strategy="beforeInteractive">
+        {\`
+          window.WHIZCHAT_API_URL = '${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}';
+          window.WHIZCHAT_CONFIG = {
+            position: '${settings.widget.position}',
+            primaryColor: '${settings.widget.primaryColor}',
+            secondaryColor: '${settings.widget.secondaryColor}'
+          };
+        \`}
+      </Script>
+      <Script
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+
+// בקובץ app/layout.tsx הוסף:
+// import { WhizChatWidget } from '@/components/WhizChatWidget';
+// ובתוך ה-body: <WhizChatWidget />`}
+                      </pre>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 left-2"
+                        onClick={() => {
+                          const code = `// components/WhizChatWidget.tsx
+'use client';
+
+import Script from 'next/script';
+
+export function WhizChatWidget() {
+  return (
+    <>
+      <Script id="whizchat-config" strategy="beforeInteractive">
+        {\`
+          window.WHIZCHAT_API_URL = '${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}';
+          window.WHIZCHAT_CONFIG = {
+            position: '${settings.widget.position}',
+            primaryColor: '${settings.widget.primaryColor}',
+            secondaryColor: '${settings.widget.secondaryColor}'
+          };
+        \`}
+      </Script>
+      <Script
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0"
+        strategy="afterInteractive"
+      />
+    </>
+  );
+}
+
+// בקובץ app/layout.tsx הוסף:
+// import { WhizChatWidget } from '@/components/WhizChatWidget';
+// ובתוך ה-body: <WhizChatWidget />`;
+                          navigator.clipboard.writeText(code);
+                        }}
+                      >
+                        העתק
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      הקומפוננטה משתמשת ב-next/script לטעינה אופטימלית
                     </p>
                   </div>
                 </CardContent>
