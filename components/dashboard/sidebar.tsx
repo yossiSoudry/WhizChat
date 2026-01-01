@@ -108,6 +108,9 @@ function UserNav() {
   const initials = agent ? getInitials(agent.name) : "W";
   const roleLabel = isAdmin ? "מנהל" : "נציג";
 
+  // Only show tooltip after mount to avoid hydration mismatch with Radix IDs
+  const showTooltip = mounted && isCollapsed ? displayName : undefined;
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -116,7 +119,7 @@ function UserNav() {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                tooltip={isCollapsed ? displayName : undefined}
+                tooltip={showTooltip}
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="size-8 border-2 border-sidebar-border">
