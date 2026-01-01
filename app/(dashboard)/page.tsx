@@ -54,6 +54,7 @@ export default function ConversationsPage() {
   const [canScrollRight, setCanScrollRight] = useState(false);
   const filtersRef = useRef<HTMLDivElement>(null);
   const previousUnreadCountRef = useRef<number>(-1); // -1 means not initialized yet
+  const lastNotificationTimeRef = useRef<string | null>(null); // Track last notification to avoid duplicates
   const isMobile = useIsMobile();
   const { setOpenMobile } = useSidebar();
   const { play: playNotificationSound, isEnabled: soundEnabled, setEnabled: setSoundEnabled, testSound } = useNotificationSound();
@@ -86,7 +87,9 @@ export default function ConversationsPage() {
 
         // Play notification sound and show push notification if unread count increased
         // Skip on first load (-1), but play when count increases after that
+        console.log("[Notifications] prev:", previousUnreadCountRef.current, "new:", newUnreadCount);
         if (previousUnreadCountRef.current >= 0 && newUnreadCount > previousUnreadCountRef.current) {
+          console.log("[Notifications] Playing sound and showing notification!");
           playNotificationSound();
           showNotification("הודעה חדשה ב-WhizChat", {
             body: `יש לך ${newUnreadCount} הודעות שלא נקראו`,
@@ -118,13 +121,52 @@ export default function ConversationsPage() {
       }
       const res = await fetch(url);
       const data = await res.json();
-      setConversations(data.conversations || []);
+      const newConversations = data.conversations || [];
+
+      // Check for new customer messages (not from agent)
+      if (lastNotificationTimeRef.current !== null) {
+        const hasNewCustomerMessage = newConversations.some((conv: Conversation) => {
+          // Check if this conversation has a new message from customer
+          if (conv.lastMessageSenderType === "customer" && conv.lastMessageAt) {
+            const lastMsgTime = new Date(conv.lastMessageAt).getTime();
+            const lastNotifTime = new Date(lastNotificationTimeRef.current!).getTime();
+            // If this message is newer than our last notification AND it's not the currently selected chat
+            if (lastMsgTime > lastNotifTime && conv.id !== selectedId) {
+              console.log("[Notifications] New customer message detected!", conv.customerName);
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (hasNewCustomerMessage) {
+          console.log("[Notifications] Playing sound for new message!");
+          playNotificationSound();
+          showNotification("הודעה חדשה ב-WhizChat", {
+            body: "יש לך הודעה חדשה מלקוח",
+            url: "/",
+          });
+        }
+      }
+
+      // Update last notification time to the latest message time
+      const latestMessageTime = newConversations.reduce((latest: string | null, conv: Conversation) => {
+        if (!conv.lastMessageAt) return latest;
+        if (!latest) return conv.lastMessageAt;
+        return new Date(conv.lastMessageAt) > new Date(latest) ? conv.lastMessageAt : latest;
+      }, null);
+
+      if (latestMessageTime) {
+        lastNotificationTimeRef.current = latestMessageTime;
+      }
+
+      setConversations(newConversations);
     } catch (error) {
       console.error("Failed to fetch conversations:", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedId, playNotificationSound, showNotification]);
 
   useEffect(() => {
     fetchConversations(activeFilter);

@@ -101,18 +101,23 @@ export function useNotificationSound(
   }, []);
 
   const play = useCallback(() => {
+    console.log("[Sound] play called, isEnabled:", isEnabled);
     if (!isEnabled) return;
 
     try {
       const audioContext = getAudioContext();
+      console.log("[Sound] audioContext:", audioContext?.state);
       if (!audioContext) return;
 
       // Resume AudioContext if it's suspended (browsers require user interaction)
       if (audioContext.state === "suspended") {
+        console.log("[Sound] Resuming suspended AudioContext...");
         audioContext.resume().then(() => {
+          console.log("[Sound] AudioContext resumed, playing sound");
           createNotificationSound(audioContext, volume);
         });
       } else {
+        console.log("[Sound] Playing sound directly");
         createNotificationSound(audioContext, volume);
       }
     } catch (error) {
