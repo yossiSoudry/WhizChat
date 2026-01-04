@@ -152,42 +152,60 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   // Subscribe to push notifications (server-side)
   const subscribe = useCallback(async (): Promise<boolean> => {
+    console.log("[Push Subscribe] Starting...");
+
     if (!VAPID_PUBLIC_KEY) {
-      console.error("VAPID key missing");
+      console.error("[Push Subscribe] VAPID key missing");
+      alert("Error: VAPID key missing");
       return false;
     }
+    console.log("[Push Subscribe] VAPID key exists");
 
     setIsLoading(true);
 
     // Set a timeout to prevent hanging
     const timeoutId = setTimeout(() => {
-      console.error("Push subscription timed out");
+      console.error("[Push Subscribe] Timed out after 10s");
+      alert("Push subscription timed out");
       setIsLoading(false);
     }, 10000);
 
     try {
       // Ensure permission is granted
+      console.log("[Push Subscribe] Current permission:", Notification.permission);
       if (Notification.permission !== "granted") {
+        console.log("[Push Subscribe] Requesting permission...");
         const granted = await requestPermission();
+        console.log("[Push Subscribe] Permission result:", granted);
         if (!granted) {
           clearTimeout(timeoutId);
           setIsLoading(false);
+          alert("Permission denied");
           return false;
         }
       }
 
       // Register service worker
+      console.log("[Push Subscribe] Getting SW registration...");
       let registration = await navigator.serviceWorker.getRegistration("/sw.js");
+      console.log("[Push Subscribe] Existing registration:", !!registration);
+
       if (!registration) {
+        console.log("[Push Subscribe] Registering new SW...");
         registration = await navigator.serviceWorker.register("/sw.js");
+        console.log("[Push Subscribe] New registration created");
       }
 
       // Wait for the service worker to be active
+      console.log("[Push Subscribe] SW state:", registration.active?.state, "installing:", !!registration.installing, "waiting:", !!registration.waiting);
+
       if (registration.installing || registration.waiting) {
+        console.log("[Push Subscribe] Waiting for SW to activate...");
         await new Promise<void>((resolve) => {
           const sw = registration!.installing || registration!.waiting;
           if (sw) {
             sw.addEventListener("statechange", () => {
+              console.log("[Push Subscribe] SW state changed to:", sw.state);
               if (sw.state === "activated") {
                 resolve();
               }
@@ -201,17 +219,30 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // Check for existing subscription
+      console.log("[Push Subscribe] Checking existing subscription...");
       let subscription = await registration.pushManager.getSubscription();
+      console.log("[Push Subscribe] Existing subscription:", !!subscription);
 
       // If not subscribed, create new subscription
       if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-        });
+        console.log("[Push Subscribe] Creating new subscription...");
+        try {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+          console.log("[Push Subscribe] Subscription created successfully");
+        } catch (subError) {
+          console.error("[Push Subscribe] Failed to create subscription:", subError);
+          alert("Failed to create push subscription: " + (subError instanceof Error ? subError.message : String(subError)));
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+          return false;
+        }
       }
 
       // Send subscription to server
+      console.log("[Push Subscribe] Sending to server...");
       const response = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: {
@@ -220,17 +251,24 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         body: JSON.stringify(subscription.toJSON()),
       });
 
+      console.log("[Push Subscribe] Server response:", response.status);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Push Subscribe] Server error:", errorText);
+        alert("Server error: " + errorText);
         throw new Error("Failed to save subscription to server");
       }
 
       clearTimeout(timeoutId);
+      console.log("[Push Subscribe] SUCCESS!");
+      alert("Push notifications enabled successfully!");
       setIsSubscribed(true);
       setIsEnabled(true);
       setIsLoading(false);
       return true;
     } catch (error) {
-      console.error("Error subscribing to push:", error);
+      console.error("[Push Subscribe] Error:", error);
+      alert("Error subscribing: " + (error instanceof Error ? error.message : String(error)));
       clearTimeout(timeoutId);
       setIsLoading(false);
       return false;
