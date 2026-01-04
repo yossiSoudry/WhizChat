@@ -316,7 +316,8 @@ export default function ConversationsPage() {
               {/* Push notifications toggle */}
               <button
                 onClick={async () => {
-                  if (pushLoading || !pushSupported) return;
+                  console.log("[Push Button] clicked", { pushLoading, pushSupported, pushSubscribed, pushPermission });
+                  // Always allow click - handle states inside
                   if (pushSubscribed) {
                     await unsubscribeFromPush();
                   } else {
@@ -327,12 +328,10 @@ export default function ConversationsPage() {
                   "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                   pushLoading
                     ? "bg-muted/50 text-muted-foreground animate-pulse"
-                    : !pushSupported
-                    ? "bg-muted/30 text-muted-foreground/50 cursor-not-allowed"
                     : pushSubscribed
                     ? "bg-primary/10 text-primary hover:bg-primary/20"
                     : pushPermission === "denied"
-                    ? "bg-destructive/10 text-destructive cursor-not-allowed"
+                    ? "bg-destructive/10 text-destructive"
                     : "bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
                 title={
@@ -346,7 +345,6 @@ export default function ConversationsPage() {
                     ? "התראות Push מופעלות - לחץ לכיבוי"
                     : "הפעל התראות Push"
                 }
-                disabled={pushPermission === "denied" || pushLoading || !pushSupported}
               >
                 {pushSubscribed ? (
                   <Bell className="w-4 h-4" />

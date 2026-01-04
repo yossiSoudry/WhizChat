@@ -42,6 +42,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   // Check support on mount - simple and fast
   useEffect(() => {
     if (typeof window === "undefined") {
+      console.log("[Push] SSR - skipping");
       setIsLoading(false);
       return;
     }
@@ -51,11 +52,15 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     const hasServiceWorker = "serviceWorker" in navigator;
     const hasPushManager = "PushManager" in window;
 
+    console.log("[Push] Support check:", { hasNotification, hasServiceWorker, hasPushManager });
+
     const supported = hasNotification && hasServiceWorker && hasPushManager;
     setIsSupported(supported);
 
     if (supported) {
-      setPermission(Notification.permission);
+      const perm = Notification.permission;
+      console.log("[Push] Permission:", perm);
+      setPermission(perm);
 
       // Load enabled state from localStorage
       try {
@@ -73,36 +78,46 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       // Check subscription in background (don't block UI)
       checkCurrentSubscription();
     } else {
+      console.log("[Push] Not supported - setting isLoading=false");
       setIsLoading(false);
     }
   }, []);
 
   // Check if we have an active subscription
   const checkCurrentSubscription = async () => {
+    console.log("[Push] checkCurrentSubscription started");
+
     // Set a timeout to ensure we don't hang forever
     const timeout = setTimeout(() => {
-      console.warn("Service worker check timed out");
+      console.warn("[Push] Service worker check timed out - setting isLoading=false");
       setIsLoading(false);
     }, 3000);
 
     try {
       // Try to get existing registration first
+      console.log("[Push] Getting SW registration...");
       let registration = await navigator.serviceWorker.getRegistration("/sw.js");
+      console.log("[Push] Got registration:", !!registration);
 
       // If no registration, try to register
       if (!registration) {
+        console.log("[Push] Registering SW...");
         registration = await navigator.serviceWorker.register("/sw.js");
+        console.log("[Push] SW registered");
       }
 
       // Check subscription if we have a registration
       if (registration) {
+        console.log("[Push] Checking pushManager subscription...");
         const subscription = await registration.pushManager.getSubscription();
+        console.log("[Push] Subscription:", !!subscription);
         setIsSubscribed(!!subscription);
       }
     } catch (error) {
-      console.error("Error checking subscription:", error);
+      console.error("[Push] Error checking subscription:", error);
     } finally {
       clearTimeout(timeout);
+      console.log("[Push] checkCurrentSubscription done - setting isLoading=false");
       setIsLoading(false);
     }
   };
