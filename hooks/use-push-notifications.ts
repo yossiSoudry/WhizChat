@@ -39,16 +39,54 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check subscription status
-  const checkSubscription = useCallback(async () => {
-    if (!("serviceWorker" in navigator)) {
+  // Check support on mount - simple and fast
+  useEffect(() => {
+    if (typeof window === "undefined") {
       setIsLoading(false);
       return;
     }
 
+    // Simple checks that don't require async
+    const hasNotification = "Notification" in window;
+    const hasServiceWorker = "serviceWorker" in navigator;
+    const hasPushManager = "PushManager" in window;
+
+    const supported = hasNotification && hasServiceWorker && hasPushManager;
+    setIsSupported(supported);
+
+    if (supported) {
+      setPermission(Notification.permission);
+
+      // Load enabled state from localStorage
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const prefs = JSON.parse(stored);
+          setIsEnabled(prefs.enabled && Notification.permission === "granted");
+        } else if (Notification.permission === "granted") {
+          setIsEnabled(true);
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      // Check subscription in background (don't block UI)
+      checkCurrentSubscription();
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Check if we have an active subscription
+  const checkCurrentSubscription = async () => {
     try {
-      // Wait for service worker to be ready
-      const registration = await navigator.serviceWorker.ready;
+      // First register the service worker
+      const registration = await navigator.serviceWorker.register("/sw.js");
+
+      // Wait a bit for it to activate
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Check subscription
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
@@ -56,66 +94,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Check support and load preferences on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const initPushSupport = async () => {
-      // Check basic support
-      const hasNotification = "Notification" in window;
-      const hasServiceWorker = "serviceWorker" in navigator;
-
-      if (!hasNotification || !hasServiceWorker) {
-        setIsSupported(false);
-        setIsLoading(false);
-        return;
-      }
-
-      // Register service worker first
-      try {
-        await navigator.serviceWorker.register("/sw.js");
-      } catch (err) {
-        console.error("Service Worker registration failed:", err);
-      }
-
-      // Wait for SW to be ready, then check PushManager
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const hasPushManager = "pushManager" in registration;
-        setIsSupported(hasPushManager);
-
-        if (hasPushManager) {
-          setPermission(Notification.permission);
-
-          // Load enabled state from localStorage
-          try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-              const prefs = JSON.parse(stored);
-              setIsEnabled(prefs.enabled && Notification.permission === "granted");
-            } else if (Notification.permission === "granted") {
-              setIsEnabled(true);
-            }
-          } catch {
-            // Ignore localStorage errors
-          }
-
-          // Check if already subscribed
-          await checkSubscription();
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing push support:", error);
-        setIsSupported(false);
-        setIsLoading(false);
-      }
-    };
-
-    initPushSupport();
-  }, [checkSubscription]);
+  };
 
   // Save enabled state to localStorage
   useEffect(() => {
@@ -164,8 +143,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         }
       }
 
-      // Get service worker registration
-      const registration = await navigator.serviceWorker.ready;
+      // Register service worker
+      const registration = await navigator.serviceWorker.register("/sw.js");
+
+      // Wait for it to be ready
+      await navigator.serviceWorker.ready;
 
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
@@ -207,21 +189,23 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     setIsLoading(true);
 
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        const subscription = await registration.pushManager.getSubscription();
 
-      if (subscription) {
-        // Unsubscribe from browser
-        await subscription.unsubscribe();
+        if (subscription) {
+          // Unsubscribe from browser
+          await subscription.unsubscribe();
 
-        // Remove from server
-        await fetch("/api/push/subscribe", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        });
+          // Remove from server
+          await fetch("/api/push/subscribe", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+          });
+        }
       }
 
       setIsSubscribed(false);

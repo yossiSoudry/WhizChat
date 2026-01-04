@@ -313,45 +313,47 @@ export default function ConversationsPage() {
               {/* Divider */}
               <div className="w-px h-5 bg-border mx-0.5" />
 
-              {/* Push notifications toggle - show while loading or when supported */}
-              {(pushLoading || pushSupported) && (
-                <button
-                  onClick={async () => {
-                    if (pushLoading) return;
-                    if (pushSubscribed) {
-                      await unsubscribeFromPush();
-                    } else {
-                      await subscribeToPush();
-                    }
-                  }}
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                    pushLoading
-                      ? "bg-muted/50 text-muted-foreground animate-pulse"
-                      : pushSubscribed
-                      ? "bg-primary/10 text-primary hover:bg-primary/20"
-                      : pushPermission === "denied"
-                      ? "bg-destructive/10 text-destructive cursor-not-allowed"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                  )}
-                  title={
-                    pushLoading
-                      ? "טוען..."
-                      : pushPermission === "denied"
-                      ? "התראות נחסמו בדפדפן"
-                      : pushSubscribed
-                      ? "התראות Push מופעלות - לחץ לכיבוי"
-                      : "הפעל התראות Push"
+              {/* Push notifications toggle */}
+              <button
+                onClick={async () => {
+                  if (pushLoading || !pushSupported) return;
+                  if (pushSubscribed) {
+                    await unsubscribeFromPush();
+                  } else {
+                    await subscribeToPush();
                   }
-                  disabled={pushPermission === "denied" || pushLoading}
-                >
-                  {pushSubscribed ? (
-                    <Bell className="w-4 h-4" />
-                  ) : (
-                    <BellOff className="w-4 h-4" />
-                  )}
-                </button>
-              )}
+                }}
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  pushLoading
+                    ? "bg-muted/50 text-muted-foreground animate-pulse"
+                    : !pushSupported
+                    ? "bg-muted/30 text-muted-foreground/50 cursor-not-allowed"
+                    : pushSubscribed
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : pushPermission === "denied"
+                    ? "bg-destructive/10 text-destructive cursor-not-allowed"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                )}
+                title={
+                  pushLoading
+                    ? "טוען..."
+                    : !pushSupported
+                    ? "הדפדפן לא תומך בהתראות Push"
+                    : pushPermission === "denied"
+                    ? "התראות נחסמו בדפדפן"
+                    : pushSubscribed
+                    ? "התראות Push מופעלות - לחץ לכיבוי"
+                    : "הפעל התראות Push"
+                }
+                disabled={pushPermission === "denied" || pushLoading || !pushSupported}
+              >
+                {pushSubscribed ? (
+                  <Bell className="w-4 h-4" />
+                ) : (
+                  <BellOff className="w-4 h-4" />
+                )}
+              </button>
 
               {/* Sound toggle button - click to toggle, double-click to test */}
               <button
