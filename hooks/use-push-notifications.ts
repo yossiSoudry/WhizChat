@@ -156,17 +156,14 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     if (!VAPID_PUBLIC_KEY) {
       console.error("[Push Subscribe] VAPID key missing");
-      alert("Error: VAPID key missing");
       return false;
     }
-    console.log("[Push Subscribe] VAPID key exists");
 
     setIsLoading(true);
 
     // Set a timeout to prevent hanging
     const timeoutId = setTimeout(() => {
       console.error("[Push Subscribe] Timed out after 10s");
-      alert("Push subscription timed out");
       setIsLoading(false);
     }, 10000);
 
@@ -180,7 +177,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         if (!granted) {
           clearTimeout(timeoutId);
           setIsLoading(false);
-          alert("Permission denied");
           return false;
         }
       }
@@ -234,7 +230,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           console.log("[Push Subscribe] Subscription created successfully");
         } catch (subError) {
           console.error("[Push Subscribe] Failed to create subscription:", subError);
-          alert("Failed to create push subscription: " + (subError instanceof Error ? subError.message : String(subError)));
           clearTimeout(timeoutId);
           setIsLoading(false);
           return false;
@@ -255,20 +250,17 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[Push Subscribe] Server error:", errorText);
-        alert("Server error: " + errorText);
         throw new Error("Failed to save subscription to server");
       }
 
       clearTimeout(timeoutId);
       console.log("[Push Subscribe] SUCCESS!");
-      alert("Push notifications enabled successfully!");
       setIsSubscribed(true);
       setIsEnabled(true);
       setIsLoading(false);
       return true;
     } catch (error) {
       console.error("[Push Subscribe] Error:", error);
-      alert("Error subscribing: " + (error instanceof Error ? error.message : String(error)));
       clearTimeout(timeoutId);
       setIsLoading(false);
       return false;
