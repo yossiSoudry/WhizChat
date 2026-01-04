@@ -7,6 +7,7 @@ interface UsePushNotificationsReturn {
   permission: NotificationPermission | "default";
   isEnabled: boolean;
   isSubscribed: boolean;
+  isLoading: boolean;
   requestPermission: () => Promise<boolean>;
   showNotification: (title: string, options?: NotificationOptions & { url?: string }) => void;
   subscribe: () => Promise<boolean>;
@@ -36,48 +37,85 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [permission, setPermission] = useState<NotificationPermission | "default">("default");
   const [isEnabled, setIsEnabled] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-
-  // Check support and load preferences on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // Check if notifications are supported
-    const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
-    setIsSupported(supported);
-
-    if (supported) {
-      setPermission(Notification.permission);
-
-      // Load enabled state from localStorage
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const prefs = JSON.parse(stored);
-          setIsEnabled(prefs.enabled && Notification.permission === "granted");
-        } else if (Notification.permission === "granted") {
-          setIsEnabled(true);
-        }
-      } catch {
-        // Ignore localStorage errors
-      }
-
-      // Check if already subscribed
-      checkSubscription();
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check subscription status
   const checkSubscription = useCallback(async () => {
-    if (!("serviceWorker" in navigator)) return;
+    if (!("serviceWorker" in navigator)) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
+      // Wait for service worker to be ready
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
       console.error("Error checking subscription:", error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
+
+  // Check support and load preferences on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const initPushSupport = async () => {
+      // Check basic support
+      const hasNotification = "Notification" in window;
+      const hasServiceWorker = "serviceWorker" in navigator;
+
+      if (!hasNotification || !hasServiceWorker) {
+        setIsSupported(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Register service worker first
+      try {
+        await navigator.serviceWorker.register("/sw.js");
+      } catch (err) {
+        console.error("Service Worker registration failed:", err);
+      }
+
+      // Wait for SW to be ready, then check PushManager
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const hasPushManager = "pushManager" in registration;
+        setIsSupported(hasPushManager);
+
+        if (hasPushManager) {
+          setPermission(Notification.permission);
+
+          // Load enabled state from localStorage
+          try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              const prefs = JSON.parse(stored);
+              setIsEnabled(prefs.enabled && Notification.permission === "granted");
+            } else if (Notification.permission === "granted") {
+              setIsEnabled(true);
+            }
+          } catch {
+            // Ignore localStorage errors
+          }
+
+          // Check if already subscribed
+          await checkSubscription();
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing push support:", error);
+        setIsSupported(false);
+        setIsLoading(false);
+      }
+    };
+
+    initPushSupport();
+  }, [checkSubscription]);
 
   // Save enabled state to localStorage
   useEffect(() => {
@@ -90,24 +128,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   }, [isEnabled, isSupported]);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) return false;
-
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
 
       if (result === "granted") {
         setIsEnabled(true);
-
-        // Register service worker if not already registered
-        if ("serviceWorker" in navigator) {
-          try {
-            await navigator.serviceWorker.register("/sw.js");
-          } catch (err) {
-            console.error("Service Worker registration failed:", err);
-          }
-        }
-
         return true;
       }
 
@@ -117,20 +143,25 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       console.error("Error requesting notification permission:", error);
       return false;
     }
-  }, [isSupported]);
+  }, []);
 
   // Subscribe to push notifications (server-side)
   const subscribe = useCallback(async (): Promise<boolean> => {
-    if (!isSupported || !VAPID_PUBLIC_KEY) {
-      console.error("Push not supported or VAPID key missing");
+    if (!VAPID_PUBLIC_KEY) {
+      console.error("VAPID key missing");
       return false;
     }
+
+    setIsLoading(true);
 
     try {
       // Ensure permission is granted
       if (Notification.permission !== "granted") {
         const granted = await requestPermission();
-        if (!granted) return false;
+        if (!granted) {
+          setIsLoading(false);
+          return false;
+        }
       }
 
       // Get service worker registration
@@ -162,15 +193,19 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       setIsSubscribed(true);
       setIsEnabled(true);
+      setIsLoading(false);
       return true;
     } catch (error) {
       console.error("Error subscribing to push:", error);
+      setIsLoading(false);
       return false;
     }
-  }, [isSupported, requestPermission]);
+  }, [requestPermission]);
 
   // Unsubscribe from push notifications
   const unsubscribe = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true);
+
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
@@ -191,9 +226,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       setIsSubscribed(false);
       setIsEnabled(false);
+      setIsLoading(false);
       return true;
     } catch (error) {
       console.error("Error unsubscribing from push:", error);
+      setIsLoading(false);
       return false;
     }
   }, []);
@@ -241,6 +278,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     permission,
     isEnabled,
     isSubscribed,
+    isLoading,
     requestPermission,
     showNotification,
     subscribe,

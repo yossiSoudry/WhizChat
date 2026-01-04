@@ -65,7 +65,7 @@ export default function ConversationsPage() {
   const isMobile = useIsMobile();
   const { setOpenMobile } = useSidebar();
   const { play: playNotificationSound, isEnabled: soundEnabled, setEnabled: setSoundEnabled, testSound } = useNotificationSound();
-  const { isSupported: pushSupported, isEnabled: pushEnabled, isSubscribed: pushSubscribed, permission: pushPermission, subscribe: subscribeToPush, unsubscribe: unsubscribeFromPush, showNotification } = usePushNotifications();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, permission: pushPermission, subscribe: subscribeToPush, unsubscribe: unsubscribeFromPush, showNotification, isLoading: pushLoading } = usePushNotifications();
 
   const checkScrollButtons = useCallback(() => {
     if (filtersRef.current) {
@@ -313,10 +313,11 @@ export default function ConversationsPage() {
               {/* Divider */}
               <div className="w-px h-5 bg-border mx-0.5" />
 
-              {/* Push notifications toggle */}
-              {pushSupported && (
+              {/* Push notifications toggle - show while loading or when supported */}
+              {(pushLoading || pushSupported) && (
                 <button
                   onClick={async () => {
+                    if (pushLoading) return;
                     if (pushSubscribed) {
                       await unsubscribeFromPush();
                     } else {
@@ -325,20 +326,24 @@ export default function ConversationsPage() {
                   }}
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                    pushSubscribed
+                    pushLoading
+                      ? "bg-muted/50 text-muted-foreground animate-pulse"
+                      : pushSubscribed
                       ? "bg-primary/10 text-primary hover:bg-primary/20"
                       : pushPermission === "denied"
                       ? "bg-destructive/10 text-destructive cursor-not-allowed"
                       : "bg-muted/50 text-muted-foreground hover:bg-muted"
                   )}
                   title={
-                    pushPermission === "denied"
+                    pushLoading
+                      ? "טוען..."
+                      : pushPermission === "denied"
                       ? "התראות נחסמו בדפדפן"
                       : pushSubscribed
                       ? "התראות Push מופעלות - לחץ לכיבוי"
                       : "הפעל התראות Push"
                   }
-                  disabled={pushPermission === "denied"}
+                  disabled={pushPermission === "denied" || pushLoading}
                 >
                   {pushSubscribed ? (
                     <Bell className="w-4 h-4" />
