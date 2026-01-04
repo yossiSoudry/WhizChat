@@ -315,8 +315,18 @@ export default function ConversationsPage() {
 
               {/* Push notifications toggle */}
               <button
-                onClick={async () => {
+                type="button"
+                onPointerDown={() => {
+                  console.log("[Push Button] pointerdown");
+                }}
+                onTouchStart={() => {
+                  console.log("[Push Button] touchstart");
+                }}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   console.log("[Push Button] clicked", { pushLoading, pushSupported, pushSubscribed, pushPermission });
+                  alert("Push button clicked! subscribed=" + pushSubscribed);
                   // Always allow click - handle states inside
                   if (pushSubscribed) {
                     await unsubscribeFromPush();
@@ -324,8 +334,9 @@ export default function ConversationsPage() {
                     await subscribeToPush();
                   }
                 }}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer select-none",
                   pushLoading
                     ? "bg-muted/50 text-muted-foreground animate-pulse"
                     : pushSubscribed
