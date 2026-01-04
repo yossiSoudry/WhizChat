@@ -6,23 +6,43 @@ interface UsePushNotificationsReturn {
   isSupported: boolean;
   permission: NotificationPermission | "default";
   isEnabled: boolean;
+  isSubscribed: boolean;
   requestPermission: () => Promise<boolean>;
   showNotification: (title: string, options?: NotificationOptions & { url?: string }) => void;
+  subscribe: () => Promise<boolean>;
+  unsubscribe: () => Promise<boolean>;
 }
 
 const STORAGE_KEY = "whizchat-push-notifications";
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray.buffer as ArrayBuffer;
+}
 
 export function usePushNotifications(): UsePushNotificationsReturn {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "default">("default");
   const [isEnabled, setIsEnabled] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   // Check support and load preferences on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     // Check if notifications are supported
-    const supported = "Notification" in window && "serviceWorker" in navigator;
+    const supported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
     setIsSupported(supported);
 
     if (supported) {
@@ -40,6 +60,22 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       } catch {
         // Ignore localStorage errors
       }
+
+      // Check if already subscribed
+      checkSubscription();
+    }
+  }, []);
+
+  // Check subscription status
+  const checkSubscription = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setIsSubscribed(!!subscription);
+    } catch (error) {
+      console.error("Error checking subscription:", error);
     }
   }, []);
 
@@ -83,6 +119,85 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
   }, [isSupported]);
 
+  // Subscribe to push notifications (server-side)
+  const subscribe = useCallback(async (): Promise<boolean> => {
+    if (!isSupported || !VAPID_PUBLIC_KEY) {
+      console.error("Push not supported or VAPID key missing");
+      return false;
+    }
+
+    try {
+      // Ensure permission is granted
+      if (Notification.permission !== "granted") {
+        const granted = await requestPermission();
+        if (!granted) return false;
+      }
+
+      // Get service worker registration
+      const registration = await navigator.serviceWorker.ready;
+
+      // Check for existing subscription
+      let subscription = await registration.pushManager.getSubscription();
+
+      // If not subscribed, create new subscription
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+      }
+
+      // Send subscription to server
+      const response = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save subscription to server");
+      }
+
+      setIsSubscribed(true);
+      setIsEnabled(true);
+      return true;
+    } catch (error) {
+      console.error("Error subscribing to push:", error);
+      return false;
+    }
+  }, [isSupported, requestPermission]);
+
+  // Unsubscribe from push notifications
+  const unsubscribe = useCallback(async (): Promise<boolean> => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        // Unsubscribe from browser
+        await subscription.unsubscribe();
+
+        // Remove from server
+        await fetch("/api/push/subscribe", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+      }
+
+      setIsSubscribed(false);
+      setIsEnabled(false);
+      return true;
+    } catch (error) {
+      console.error("Error unsubscribing from push:", error);
+      return false;
+    }
+  }, []);
+
   const showNotification = useCallback(
     (title: string, options?: NotificationOptions & { url?: string }) => {
       if (!isSupported || !isEnabled || permission !== "granted") return;
@@ -125,7 +240,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     isSupported,
     permission,
     isEnabled,
+    isSubscribed,
     requestPermission,
     showNotification,
+    subscribe,
+    unsubscribe,
   };
 }

@@ -26,7 +26,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nFix widget LTR direction and add WordPress user avatar support\n\n- Change widget direction from RTL to LTR\n- Fix message alignment (customer on right, agent on left)\n- Change time format to en-US with AM/PM\n- Add wpUserAvatar field to Prisma schema\n- Update chat/init API to accept and store avatar\n- Update conversations API to return avatar data\n- Update conversation list to display avatars\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push)",
       "Bash(git commit:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx web-push:*)"
     ]
   }
 }

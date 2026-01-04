@@ -65,7 +65,7 @@ export default function ConversationsPage() {
   const isMobile = useIsMobile();
   const { setOpenMobile } = useSidebar();
   const { play: playNotificationSound, isEnabled: soundEnabled, setEnabled: setSoundEnabled, testSound } = useNotificationSound();
-  const { isSupported: pushSupported, isEnabled: pushEnabled, permission: pushPermission, requestPermission, showNotification } = usePushNotifications();
+  const { isSupported: pushSupported, isEnabled: pushEnabled, isSubscribed: pushSubscribed, permission: pushPermission, subscribe: subscribeToPush, unsubscribe: unsubscribeFromPush, showNotification } = usePushNotifications();
 
   const checkScrollButtons = useCallback(() => {
     if (filtersRef.current) {
@@ -317,13 +317,15 @@ export default function ConversationsPage() {
               {pushSupported && (
                 <button
                   onClick={async () => {
-                    if (pushPermission !== "granted") {
-                      await requestPermission();
+                    if (pushSubscribed) {
+                      await unsubscribeFromPush();
+                    } else {
+                      await subscribeToPush();
                     }
                   }}
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                    pushEnabled
+                    pushSubscribed
                       ? "bg-primary/10 text-primary hover:bg-primary/20"
                       : pushPermission === "denied"
                       ? "bg-destructive/10 text-destructive cursor-not-allowed"
@@ -332,13 +334,13 @@ export default function ConversationsPage() {
                   title={
                     pushPermission === "denied"
                       ? "התראות נחסמו בדפדפן"
-                      : pushEnabled
-                      ? "התראות דפדפן מופעלות"
-                      : "הפעל התראות דפדפן"
+                      : pushSubscribed
+                      ? "התראות Push מופעלות - לחץ לכיבוי"
+                      : "הפעל התראות Push"
                   }
                   disabled={pushPermission === "denied"}
                 >
-                  {pushEnabled ? (
+                  {pushSubscribed ? (
                     <Bell className="w-4 h-4" />
                   ) : (
                     <BellOff className="w-4 h-4" />

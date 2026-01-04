@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { sendMessageSchema } from "@/lib/validations/chat";
 import { corsResponse, handleOptions } from "@/lib/cors";
 import { notifyAgentsOnNewMessage } from "@/lib/notifications/whatsapp-notifications";
+import { notifyAgentsOfNewMessage } from "@/lib/notifications/push-notifications";
 
 export async function OPTIONS() {
   return handleOptions();
@@ -88,14 +89,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send WhatsApp notifications to agents (non-blocking)
+    // Send notifications to agents (non-blocking)
     const customerName = senderName || conversation.wpUserName || conversation.guestName || "לקוח";
+
+    // WhatsApp notifications
     notifyAgentsOnNewMessage({
       conversationId,
       customerName,
       messagePreview: content,
     }).catch((error) => {
-      console.error("Failed to send agent notifications:", error);
+      console.error("Failed to send WhatsApp notifications:", error);
+    });
+
+    // Push notifications
+    notifyAgentsOfNewMessage(customerName, content, conversationId).catch((error) => {
+      console.error("Failed to send push notifications:", error);
     });
 
     return corsResponse({

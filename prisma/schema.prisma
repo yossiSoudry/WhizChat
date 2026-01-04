@@ -193,9 +193,15 @@ model Agent {
   // WhatsApp Notifications
   receiveWhatsappNotifications Boolean @default(false) @map("receive_whatsapp_notifications")
 
+  // Push Notifications
+  receivePushNotifications Boolean @default(true) @map("receive_push_notifications")
+
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  pushSubscriptions PushSubscription[]
 
   @@map("agents")
 }
@@ -259,4 +265,29 @@ model Setting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+model PushSubscription {
+  id String @id @default(uuid())
+
+  // Link to agent
+  agentId String @map("agent_id")
+
+  // Push subscription data from browser
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  // Device info
+  userAgent String? @map("user_agent")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("push_subscriptions")
 }
