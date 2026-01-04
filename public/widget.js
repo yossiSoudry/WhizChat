@@ -312,6 +312,35 @@
         font-size: 11px;
         opacity: 0.7;
         margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .whizchat-message.customer .whizchat-message-time {
+        justify-content: flex-end;
+      }
+
+      .whizchat-message-status {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .whizchat-message-status svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .whizchat-message-status.sent svg {
+        fill: rgba(255,255,255,0.6);
+      }
+
+      .whizchat-message-status.delivered svg {
+        fill: rgba(255,255,255,0.8);
+      }
+
+      .whizchat-message-status.read svg {
+        fill: #34d399;
       }
 
       .whizchat-faq {
@@ -770,7 +799,13 @@
         content = '<div>' + escapeHtml(msg.content) + '</div>';
       }
 
-      div.innerHTML = content + '<div class="whizchat-message-time">' + formatTime(msg.createdAt) + '</div>';
+      // Add status icon for customer messages
+      var statusHtml = '';
+      if (msg.senderType === 'customer' && msg.status) {
+        statusHtml = getStatusIcon(msg.status);
+      }
+
+      div.innerHTML = content + '<div class="whizchat-message-time">' + formatTime(msg.createdAt) + statusHtml + '</div>';
       container.appendChild(div);
     });
 
@@ -903,6 +938,20 @@
     var div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  // Get status icon SVG
+  function getStatusIcon(status) {
+    if (status === 'read') {
+      // Double check - blue/green
+      return '<span class="whizchat-message-status read"><svg viewBox="0 0 16 15"><path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg></span>';
+    } else if (status === 'delivered') {
+      // Double check - gray
+      return '<span class="whizchat-message-status delivered"><svg viewBox="0 0 16 15"><path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg></span>';
+    } else {
+      // Single check - sent
+      return '<span class="whizchat-message-status sent"><svg viewBox="0 0 16 15"><path d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg></span>';
+    }
   }
 
   // Init chat
