@@ -48,6 +48,8 @@ export async function sendPushToAgent(
     where: { agentId },
   });
 
+  console.log("[Push] Agent", agentId, "has subscriptions:", subscriptions.length);
+
   if (subscriptions.length === 0) {
     return { success: 0, failed: 0 };
   }
@@ -97,8 +99,10 @@ export async function sendPushToAllAgents(
   payload: PushPayload,
   excludeAgentId?: string
 ): Promise<{ success: number; failed: number }> {
+  console.log("[Push] sendPushToAllAgents - VAPID configured:", !!VAPID_PUBLIC_KEY && !!VAPID_PRIVATE_KEY);
+
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-    console.warn("VAPID keys not configured, skipping push notification");
+    console.warn("[Push] VAPID keys not configured, skipping push notification");
     return { success: 0, failed: 0 };
   }
 
@@ -111,6 +115,8 @@ export async function sendPushToAllAgents(
     },
     select: { id: true },
   });
+
+  console.log("[Push] Found agents with push enabled:", agents.length);
 
   let totalSuccess = 0;
   let totalFailed = 0;
@@ -132,6 +138,8 @@ export async function notifyAgentsOfNewMessage(
   messagePreview: string,
   conversationId: string
 ): Promise<void> {
+  console.log("[Push] notifyAgentsOfNewMessage called:", { customerName, conversationId });
+
   const payload: PushPayload = {
     title: `הודעה חדשה מ-${customerName}`,
     body: messagePreview.length > 100
@@ -143,8 +151,5 @@ export async function notifyAgentsOfNewMessage(
   };
 
   const result = await sendPushToAllAgents(payload);
-
-  if (result.success > 0) {
-    console.log(`Push notifications sent: ${result.success} success, ${result.failed} failed`);
-  }
+  console.log("[Push] Result:", result);
 }
