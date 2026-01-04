@@ -271,12 +271,10 @@
       }
 
       .whizchat-message {
-        max-width: 80%;
         padding: 10px 14px;
         border-radius: 16px;
         font-size: 14px;
         line-height: 1.4;
-        animation: whizchat-fadeIn 0.2s ease-out;
       }
 
       @keyframes whizchat-fadeIn {
@@ -287,7 +285,6 @@
       .whizchat-message.customer {
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        align-self: flex-end;
         border-bottom-right-radius: 4px;
       }
 
@@ -295,30 +292,54 @@
       .whizchat-message.bot {
         background: #f3f4f6;
         color: #1f2937;
-        align-self: flex-start;
         border-bottom-left-radius: 4px;
       }
 
       .whizchat-message.system {
         background: #fef3c7;
         color: #92400e;
-        align-self: center;
         text-align: center;
         font-size: 13px;
-        max-width: 90%;
+      }
+
+      .whizchat-message-wrapper {
+        display: flex;
+        flex-direction: column;
+        max-width: 80%;
+        animation: whizchat-fadeIn 0.2s ease-out;
+      }
+
+      .whizchat-message-wrapper.customer {
+        align-self: flex-end;
+        align-items: flex-end;
+      }
+
+      .whizchat-message-wrapper.agent,
+      .whizchat-message-wrapper.bot {
+        align-self: flex-start;
+        align-items: flex-start;
+      }
+
+      .whizchat-message-wrapper.system {
+        align-self: center;
+        align-items: center;
+      }
+
+      .whizchat-message-meta {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 2px;
+        padding: 0 4px;
+      }
+
+      .whizchat-message-wrapper.customer .whizchat-message-meta {
+        justify-content: flex-end;
       }
 
       .whizchat-message-time {
         font-size: 11px;
-        opacity: 0.7;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .whizchat-message.customer .whizchat-message-time {
-        justify-content: flex-end;
+        color: #9ca3af;
       }
 
       .whizchat-message-status {
@@ -332,15 +353,15 @@
       }
 
       .whizchat-message-status.sent svg {
-        fill: rgba(255,255,255,0.6);
+        fill: #9ca3af;
       }
 
       .whizchat-message-status.delivered svg {
-        fill: rgba(255,255,255,0.8);
+        fill: #6b7280;
       }
 
       .whizchat-message-status.read svg {
-        fill: #34d399;
+        fill: #3b82f6;
       }
 
       .whizchat-faq {
@@ -775,16 +796,26 @@
 
     // Welcome message
     if (state.welcomeMessage && state.messages.length === 0) {
+      var welcomeWrapper = document.createElement('div');
+      welcomeWrapper.className = 'whizchat-message-wrapper bot';
+
       var welcome = document.createElement('div');
       welcome.className = 'whizchat-message bot';
       welcome.textContent = state.welcomeMessage;
-      container.appendChild(welcome);
+      welcomeWrapper.appendChild(welcome);
+
+      container.appendChild(welcomeWrapper);
     }
 
     // Messages
     state.messages.forEach(function(msg) {
-      var div = document.createElement('div');
-      div.className = 'whizchat-message ' + msg.senderType;
+      // Create wrapper div
+      var wrapper = document.createElement('div');
+      wrapper.className = 'whizchat-message-wrapper ' + msg.senderType;
+
+      // Create message bubble
+      var bubble = document.createElement('div');
+      bubble.className = 'whizchat-message ' + msg.senderType;
 
       var content = '';
       // Check if message has file
@@ -796,17 +827,27 @@
           '<div class="whizchat-file-info"><div class="whizchat-file-name">' + escapeHtml(msg.fileName || 'File') + '</div><div class="whizchat-file-size">' + formatFileSize(msg.fileSize || 0) + '</div></div>' +
           '</a>';
       } else {
-        content = '<div>' + escapeHtml(msg.content) + '</div>';
+        content = escapeHtml(msg.content);
       }
+
+      bubble.innerHTML = content;
+      wrapper.appendChild(bubble);
+
+      // Create meta line (time + status) - outside the bubble
+      var meta = document.createElement('div');
+      meta.className = 'whizchat-message-meta';
+
+      var metaContent = '<span class="whizchat-message-time">' + formatTime(msg.createdAt) + '</span>';
 
       // Add status icon for customer messages
-      var statusHtml = '';
       if (msg.senderType === 'customer' && msg.status) {
-        statusHtml = getStatusIcon(msg.status);
+        metaContent += getStatusIcon(msg.status);
       }
 
-      div.innerHTML = content + '<div class="whizchat-message-time">' + formatTime(msg.createdAt) + statusHtml + '</div>';
-      container.appendChild(div);
+      meta.innerHTML = metaContent;
+      wrapper.appendChild(meta);
+
+      container.appendChild(wrapper);
     });
 
     // Scroll to bottom
