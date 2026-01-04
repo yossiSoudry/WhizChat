@@ -263,7 +263,26 @@ export default function ConversationsPage() {
   }, []);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col">
+      {/* DEBUG: Test push button - REMOVE AFTER TESTING */}
+      <div className="bg-yellow-100 p-2 flex items-center justify-center gap-2 shrink-0">
+        <span className="text-xs text-black">PWA Test:</span>
+        <button
+          type="button"
+          onClick={() => {
+            alert("TEST BUTTON WORKS!");
+            subscribeToPush();
+          }}
+          className="bg-blue-500 text-white px-3 py-1 rounded text-sm font-bold"
+        >
+          Enable Push
+        </button>
+        <span className="text-xs text-black">
+          Loading: {pushLoading ? "Y" : "N"} | Supported: {pushSupported ? "Y" : "N"} | Subscribed: {pushSubscribed ? "Y" : "N"}
+        </span>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
       {/* Agent presence heartbeat */}
       <AgentPresence />
 
@@ -583,6 +602,7 @@ export default function ConversationsPage() {
         ) : (
           !isMobile && <EmptyState />
         )}
+      </div>
       </div>
     </div>
   );
