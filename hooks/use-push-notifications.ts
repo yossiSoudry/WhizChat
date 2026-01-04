@@ -79,19 +79,30 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   // Check if we have an active subscription
   const checkCurrentSubscription = async () => {
+    // Set a timeout to ensure we don't hang forever
+    const timeout = setTimeout(() => {
+      console.warn("Service worker check timed out");
+      setIsLoading(false);
+    }, 3000);
+
     try {
-      // First register the service worker
-      const registration = await navigator.serviceWorker.register("/sw.js");
+      // Try to get existing registration first
+      let registration = await navigator.serviceWorker.getRegistration("/sw.js");
 
-      // Wait a bit for it to activate
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // If no registration, try to register
+      if (!registration) {
+        registration = await navigator.serviceWorker.register("/sw.js");
+      }
 
-      // Check subscription
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      // Check subscription if we have a registration
+      if (registration) {
+        const subscription = await registration.pushManager.getSubscription();
+        setIsSubscribed(!!subscription);
+      }
     } catch (error) {
       console.error("Error checking subscription:", error);
     } finally {
+      clearTimeout(timeout);
       setIsLoading(false);
     }
   };
@@ -133,21 +144,46 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     setIsLoading(true);
 
+    // Set a timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      console.error("Push subscription timed out");
+      setIsLoading(false);
+    }, 10000);
+
     try {
       // Ensure permission is granted
       if (Notification.permission !== "granted") {
         const granted = await requestPermission();
         if (!granted) {
+          clearTimeout(timeoutId);
           setIsLoading(false);
           return false;
         }
       }
 
       // Register service worker
-      const registration = await navigator.serviceWorker.register("/sw.js");
+      let registration = await navigator.serviceWorker.getRegistration("/sw.js");
+      if (!registration) {
+        registration = await navigator.serviceWorker.register("/sw.js");
+      }
 
-      // Wait for it to be ready
-      await navigator.serviceWorker.ready;
+      // Wait for the service worker to be active
+      if (registration.installing || registration.waiting) {
+        await new Promise<void>((resolve) => {
+          const sw = registration!.installing || registration!.waiting;
+          if (sw) {
+            sw.addEventListener("statechange", () => {
+              if (sw.state === "activated") {
+                resolve();
+              }
+            });
+          } else {
+            resolve();
+          }
+          // Resolve after a short delay anyway
+          setTimeout(resolve, 1000);
+        });
+      }
 
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
@@ -173,12 +209,14 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         throw new Error("Failed to save subscription to server");
       }
 
+      clearTimeout(timeoutId);
       setIsSubscribed(true);
       setIsEnabled(true);
       setIsLoading(false);
       return true;
     } catch (error) {
       console.error("Error subscribing to push:", error);
+      clearTimeout(timeoutId);
       setIsLoading(false);
       return false;
     }
