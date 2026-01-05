@@ -376,6 +376,15 @@ body {
   }
 }
 
+@keyframes highlight {
+  0%, 50% {
+    background-color: rgba(192, 38, 211, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fade-in 0.25s ease-out forwards;
@@ -407,6 +416,10 @@ body {
 
   .animate-typing-dot {
     animation: typing-dot 1.4s ease-in-out infinite;
+  }
+
+  .animate-highlight {
+    animation: highlight 1.5s ease-out forwards;
   }
 
   .animate-shimmer {

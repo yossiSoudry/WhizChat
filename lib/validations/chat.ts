@@ -23,6 +23,10 @@ export const sendMessageSchema = z.object({
   content: z.string().min(1).max(5000),
   clientMessageId: z.string().max(50), // For deduplication
   senderName: z.string().optional(),
+  // Reply fields
+  replyToId: z.string().uuid().optional(),
+  replyToContent: z.string().max(500).optional(),
+  replyToSender: z.string().max(100).optional(),
 });
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

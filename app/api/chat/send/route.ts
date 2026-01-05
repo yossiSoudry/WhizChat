@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = sendMessageSchema.parse(body);
 
-    const { conversationId, content, clientMessageId, senderName } = validatedData;
+    const { conversationId, content, clientMessageId, senderName, replyToId, replyToContent, replyToSender } = validatedData;
 
     // Check for duplicate message (idempotency)
     const existingMessage = await prisma.message.findFirst({
@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
         senderName: senderName || conversation.wpUserName || conversation.guestName || "Guest",
         source: "widget",
         status: "sent",
+        replyToId: replyToId || null,
+        replyToContent: replyToContent || null,
+        replyToSender: replyToSender || null,
       },
       select: {
         id: true,
@@ -75,6 +78,9 @@ export async function POST(request: NextRequest) {
         source: true,
         createdAt: true,
         status: true,
+        replyToId: true,
+        replyToContent: true,
+        replyToSender: true,
       },
     });
 

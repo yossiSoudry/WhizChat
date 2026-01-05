@@ -71,6 +71,9 @@ export async function GET(request: NextRequest) {
         fileName: true,
         fileSize: true,
         fileMimeType: true,
+        replyToId: true,
+        replyToContent: true,
+        replyToSender: true,
       },
     });
 

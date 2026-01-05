@@ -21,6 +21,7 @@ import {
   X as XIcon,
   ChevronUp,
   ChevronDown,
+  Reply,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -96,6 +97,9 @@ interface Message {
   fileMimeType?: string | null;
   isUploading?: boolean;
   localPreviewUrl?: string;
+  replyToId?: string | null;
+  replyToContent?: string | null;
+  replyToSender?: string | null;
 }
 
 interface ConversationDetails {
@@ -190,6 +194,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -527,8 +532,17 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   async function handleSend() {
     if (!newMessage.trim() || isSending) return;
 
+    // Capture reply data before clearing
+    const replyData = replyingTo ? {
+      replyToId: replyingTo.id,
+      replyToContent: replyingTo.content,
+      replyToSender: replyingTo.senderType === "agent" ? (agent?.name || "Agent") : (replyingTo.senderName || "Customer"),
+    } : null;
+
     setIsSending(true);
     sendTypingStatus(false); // Stop typing indicator when sending
+    setReplyingTo(null); // Clear reply state
+
     try {
       const res = await fetch("/api/admin/messages/send", {
         method: "POST",
@@ -536,6 +550,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         body: JSON.stringify({
           conversationId,
           content: newMessage,
+          ...(replyData && {
+            replyToId: replyData.replyToId,
+            replyToContent: replyData.replyToContent,
+            replyToSender: replyData.replyToSender,
+          }),
         }),
       });
 
@@ -938,70 +957,140 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 )}
                 {isAgent && !showAvatar && <div className="w-8" />}
 
-                {/* Message bubble */}
+                {/* Message bubble with reply button */}
                 {(() => {
                   const isFileMessage = message.messageType && message.messageType !== "text";
                   const isImageMessage = message.messageType === "image";
 
                   return (
-                    <div
-                      className={cn(
-                        "max-w-[70%] animate-scale-in",
-                        isSystem && "max-w-[85%]"
-                      )}
-                    >
+                    <div className={cn(
+                      "group/msg flex items-center gap-1",
+                      isAgent ? "flex-row" : "flex-row-reverse"
+                    )}>
                       <div
                         className={cn(
-                          "rounded-2xl transition-all",
-                          // Smaller padding for images, normal for text/files
-                          isImageMessage ? "p-1.5" : isFileMessage ? "p-2" : "px-4 py-2.5",
-                          isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
-                          isCustomer && "bg-card border border-border rounded-tl-sm",
-                          isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2",
-                          // Highlight search results
-                          isCurrentSearchResult && "ring-2 ring-yellow-400 ring-offset-2",
-                          isSearchResult && !isCurrentSearchResult && "ring-1 ring-yellow-300/50"
+                          "max-w-[70%] animate-scale-in",
+                          isSystem && "max-w-[85%]"
                         )}
                       >
-                        {/* File/Image message */}
-                        {isFileMessage ? (
-                          <FileMessage
-                            messageType={message.messageType!}
-                            fileUrl={message.fileUrl || ""}
-                            fileName={message.fileName || "file"}
-                            fileSize={message.fileSize || 0}
-                            fileMimeType={message.fileMimeType || "application/octet-stream"}
-                            isAgent={isAgent}
-                            isUploading={message.isUploading}
-                            localPreviewUrl={message.localPreviewUrl}
-                            caption={message.content}
-                          />
-                        ) : (
-                          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-                            {isSearchResult ? highlightSearchText(message.content) : message.content}
-                          </p>
+                        <div
+                          className={cn(
+                            "rounded-2xl transition-all",
+                            // Smaller padding for images, normal for text/files
+                            isImageMessage ? "p-1.5" : isFileMessage ? "p-2" : "px-4 py-2.5",
+                            isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
+                            isCustomer && "bg-card border border-border rounded-tl-sm",
+                            isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2",
+                            // Highlight search results
+                            isCurrentSearchResult && "ring-2 ring-yellow-400 ring-offset-2",
+                            isSearchResult && !isCurrentSearchResult && "ring-1 ring-yellow-300/50"
+                          )}
+                        >
+                          {/* Reply preview */}
+                          {message.replyToId && message.replyToContent && (
+                            <div
+                              className={cn(
+                                "flex items-stretch gap-2 mb-2 px-2 py-1.5 rounded-lg cursor-pointer text-xs",
+                                isAgent ? "bg-white/10 hover:bg-white/20" : "bg-muted hover:bg-muted/80"
+                              )}
+                              onClick={() => {
+                                // Scroll to the original message
+                                const msgIndex = messages.findIndex(m => m.id === message.replyToId);
+                                if (msgIndex !== -1) {
+                                  const el = messageRefs.current.get(msgIndex);
+                                  if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    el.classList.add('animate-highlight');
+                                    setTimeout(() => el.classList.remove('animate-highlight'), 1500);
+                                  }
+                                }
+                              }}
+                            >
+                              <div className={cn(
+                                "w-0.5 rounded-full flex-shrink-0",
+                                isAgent ? "bg-white/50" : "bg-primary"
+                              )} />
+                              <div className="flex flex-col min-w-0">
+                                <span className={cn(
+                                  "font-semibold",
+                                  isAgent ? "text-white/90" : "text-primary"
+                                )}>
+                                  {message.replyToSender}
+                                </span>
+                                <span className={cn(
+                                  "truncate",
+                                  isAgent ? "text-white/70" : "text-muted-foreground"
+                                )}>
+                                  {message.replyToContent.length > 50
+                                    ? message.replyToContent.substring(0, 50) + '...'
+                                    : message.replyToContent}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* File/Image message */}
+                          {isFileMessage ? (
+                            <FileMessage
+                              messageType={message.messageType!}
+                              fileUrl={message.fileUrl || ""}
+                              fileName={message.fileName || "file"}
+                              fileSize={message.fileSize || 0}
+                              fileMimeType={message.fileMimeType || "application/octet-stream"}
+                              isAgent={isAgent}
+                              isUploading={message.isUploading}
+                              localPreviewUrl={message.localPreviewUrl}
+                              caption={message.content}
+                            />
+                          ) : (
+                            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                              {isSearchResult ? highlightSearchText(message.content) : message.content}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Message meta */}
+                        {!isSystem && (
+                          <div
+                            className={cn(
+                              "flex items-center gap-1.5 mt-1 px-1",
+                              isAgent ? "justify-start" : "justify-end"
+                            )}
+                          >
+                            <span className="text-[11px] text-muted-foreground">
+                              {formatTime(message.createdAt)}
+                            </span>
+                            {/* Show status for agent messages (from agent's perspective in dashboard) */}
+                            {isAgent && <MessageStatus status={message.status} />}
+                            {message.source === "whatsapp" && (
+                              <span className="text-[11px] text-emerald-500 font-medium">
+                                WA
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
 
-                      {/* Message meta */}
+                      {/* Reply button - shows on hover */}
                       {!isSystem && (
-                        <div
-                          className={cn(
-                            "flex items-center gap-1.5 mt-1 px-1",
-                            isAgent ? "justify-start" : "justify-end"
-                          )}
-                        >
-                          <span className="text-[11px] text-muted-foreground">
-                            {formatTime(message.createdAt)}
-                          </span>
-                          {/* Show status for agent messages (from agent's perspective in dashboard) */}
-                          {isAgent && <MessageStatus status={message.status} />}
-                          {message.source === "whatsapp" && (
-                            <span className="text-[11px] text-emerald-500 font-medium">
-                              WA
-                            </span>
-                          )}
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover/msg:opacity-100 transition-opacity"
+                              onClick={() => {
+                                setReplyingTo(message);
+                                inputRef.current?.focus();
+                              }}
+                            >
+                              <Reply className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side={isAgent ? "right" : "left"}>
+                            הגב להודעה
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   );
@@ -1077,6 +1166,33 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             }}
             className="relative"
           >
+            {/* Reply bar */}
+            {replyingTo && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-card border border-border rounded-xl shadow-sm animate-fade-in">
+                <div className="w-1 h-8 bg-primary rounded-full flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-primary">
+                    {replyingTo.senderType === "agent"
+                      ? (agent?.name || "Agent")
+                      : (replyingTo.senderName || "Customer")}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate">
+                    {replyingTo.content.length > 60
+                      ? replyingTo.content.substring(0, 60) + '...'
+                      : replyingTo.content}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 flex-shrink-0"
+                  onClick={() => setReplyingTo(null)}
+                >
+                  <XIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
             <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
               {/* Hidden file input */}
               <input

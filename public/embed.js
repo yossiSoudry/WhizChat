@@ -57,8 +57,41 @@
   // Format time
   function formatTime(dateString) {
     var date = new Date(dateString);
-    return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   }
+
+  // Format date for separators (Today, Yesterday, or full date)
+  function formatDateSeparator(dateString) {
+    var date = new Date(dateString);
+    var today = new Date();
+    var yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Reset times for comparison
+    var dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+      return 'Today';
+    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+  }
+
+  // Check if two dates are the same day
+  function isSameDay(date1, date2) {
+    var d1 = new Date(date1);
+    var d2 = new Date(date2);
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+  }
+
+  // Reply state
+  var replyingTo = null;
 
   // Create widget container
   function createWidget() {
@@ -122,6 +155,22 @@
         <div id="wc-faq" class="wc-faq wc-hidden">
           <div class="wc-faq-title">Frequently Asked Questions:</div>
           <div id="wc-faq-list" class="wc-faq-list"></div>
+        </div>
+
+        <div id="wc-reply-bar" class="wc-reply-bar wc-hidden">
+          <div class="wc-reply-content">
+            <div class="wc-reply-indicator"></div>
+            <div class="wc-reply-info">
+              <span id="wc-reply-sender" class="wc-reply-sender"></span>
+              <span id="wc-reply-text" class="wc-reply-text"></span>
+            </div>
+          </div>
+          <button id="wc-reply-close" class="wc-reply-close" aria-label="Cancel reply">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
 
         <div class="wc-input-area">
@@ -417,6 +466,227 @@
         text-align: left !important;
       }
 
+      /* Date separator */
+      #whizchat-widget .wc-date-separator {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 8px 0 !important;
+        margin: 8px 0 !important;
+      }
+
+      #whizchat-widget .wc-date-separator span {
+        display: inline-block !important;
+        background: var(--wc-bg) !important;
+        color: var(--wc-text-secondary) !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        padding: 4px 12px !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--wc-border) !important;
+      }
+
+      /* Reply bar */
+      #whizchat-widget .wc-reply-bar {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 16px !important;
+        background: var(--wc-bg-secondary) !important;
+        border-top: 1px solid var(--wc-border) !important;
+      }
+
+      #whizchat-widget .wc-reply-content {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+      }
+
+      #whizchat-widget .wc-reply-indicator {
+        width: 3px !important;
+        height: 32px !important;
+        background: var(--wc-primary) !important;
+        border-radius: 2px !important;
+        flex-shrink: 0 !important;
+      }
+
+      #whizchat-widget .wc-reply-info {
+        display: flex !important;
+        flex-direction: column !important;
+        min-width: 0 !important;
+      }
+
+      #whizchat-widget .wc-reply-sender {
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: var(--wc-primary) !important;
+      }
+
+      #whizchat-widget .wc-reply-text {
+        font-size: 12px !important;
+        color: var(--wc-text-secondary) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+
+      #whizchat-widget .wc-reply-close {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 24px !important;
+        height: 24px !important;
+        border: none !important;
+        background: transparent !important;
+        color: var(--wc-text-secondary) !important;
+        cursor: pointer !important;
+        border-radius: 4px !important;
+        flex-shrink: 0 !important;
+      }
+
+      #whizchat-widget .wc-reply-close:hover {
+        background: var(--wc-border) !important;
+      }
+
+      /* Reply button on messages */
+      #whizchat-widget .wc-message-actions {
+        display: none !important;
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        gap: 4px !important;
+      }
+
+      #whizchat-widget .wc-message.customer .wc-message-actions {
+        left: -32px !important;
+      }
+
+      #whizchat-widget .wc-message.agent .wc-message-actions,
+      #whizchat-widget .wc-message.bot .wc-message-actions {
+        right: -32px !important;
+      }
+
+      #whizchat-widget .wc-message-wrapper:hover .wc-message-actions {
+        display: flex !important;
+      }
+
+      #whizchat-widget .wc-reply-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 28px !important;
+        height: 28px !important;
+        border: none !important;
+        background: var(--wc-bg) !important;
+        border-radius: 50% !important;
+        cursor: pointer !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        color: var(--wc-text-secondary) !important;
+      }
+
+      #whizchat-widget .wc-reply-btn:hover {
+        background: var(--wc-bg-secondary) !important;
+        color: var(--wc-primary) !important;
+      }
+
+      /* Reply preview in message */
+      #whizchat-widget .wc-message-reply {
+        display: flex !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        padding: 8px !important;
+        margin-bottom: 4px !important;
+        background: rgba(0,0,0,0.05) !important;
+        border-radius: 8px !important;
+        font-size: 12px !important;
+        cursor: pointer !important;
+      }
+
+      #whizchat-widget .wc-message.customer .wc-message-reply {
+        background: rgba(0,0,0,0.05) !important;
+      }
+
+      #whizchat-widget .wc-message.agent .wc-message-reply,
+      #whizchat-widget .wc-message.bot .wc-message-reply {
+        background: rgba(255,255,255,0.15) !important;
+      }
+
+      #whizchat-widget .wc-message-reply-bar {
+        width: 3px !important;
+        background: var(--wc-primary) !important;
+        border-radius: 2px !important;
+        flex-shrink: 0 !important;
+      }
+
+      #whizchat-widget .wc-message.agent .wc-message-reply-bar,
+      #whizchat-widget .wc-message.bot .wc-message-reply-bar {
+        background: rgba(255,255,255,0.5) !important;
+      }
+
+      #whizchat-widget .wc-message-reply-content {
+        display: flex !important;
+        flex-direction: column !important;
+        min-width: 0 !important;
+      }
+
+      #whizchat-widget .wc-message-reply-sender {
+        font-weight: 600 !important;
+        color: var(--wc-primary) !important;
+        margin-bottom: 2px !important;
+      }
+
+      #whizchat-widget .wc-message.agent .wc-message-reply-sender,
+      #whizchat-widget .wc-message.bot .wc-message-reply-sender {
+        color: rgba(255,255,255,0.9) !important;
+      }
+
+      #whizchat-widget .wc-message-reply-text {
+        color: var(--wc-text-secondary) !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+
+      #whizchat-widget .wc-message.agent .wc-message-reply-text,
+      #whizchat-widget .wc-message.bot .wc-message-reply-text {
+        color: rgba(255,255,255,0.7) !important;
+      }
+
+      /* Message wrapper for reply button positioning */
+      #whizchat-widget .wc-message-wrapper {
+        display: flex !important;
+        position: relative !important;
+        max-width: 85% !important;
+      }
+
+      #whizchat-widget .wc-message-wrapper.customer {
+        align-self: flex-end !important;
+        flex-direction: row-reverse !important;
+      }
+
+      #whizchat-widget .wc-message-wrapper .wc-reply-btn {
+        opacity: 0 !important;
+        transition: opacity 0.2s !important;
+        align-self: center !important;
+        margin: 0 4px !important;
+      }
+
+      #whizchat-widget .wc-message-wrapper:hover .wc-reply-btn {
+        opacity: 1 !important;
+      }
+
+      /* Message highlight animation when clicking on reply */
+      #whizchat-widget .wc-message-highlight {
+        animation: wc-highlight 1.5s ease-out !important;
+      }
+
+      @keyframes wc-highlight {
+        0%, 50% { background: rgba(192, 38, 211, 0.2) !important; }
+        100% { background: transparent !important; }
+      }
+
       #whizchat-widget .wc-typing {
         display: flex !important;
         align-items: center !important;
@@ -600,6 +870,7 @@
       if (e.key === 'Enter') handleSend();
     });
     document.getElementById('wc-input').addEventListener('input', handleTyping);
+    document.getElementById('wc-reply-close').addEventListener('click', cancelReply);
   }
 
   // Toggle widget
@@ -746,12 +1017,18 @@
         senderType: 'bot',
         content: welcomeMessage,
         createdAt: new Date().toISOString()
-      });
+      }, null);
     }
 
-    // Messages
-    messages.forEach(function(msg) {
-      container.innerHTML += createMessageHTML(msg);
+    // Messages with date separators
+    var lastDate = null;
+    messages.forEach(function(msg, index) {
+      // Check if we need a date separator
+      if (!lastDate || !isSameDay(lastDate, msg.createdAt)) {
+        container.innerHTML += '<div class="wc-date-separator"><span>' + formatDateSeparator(msg.createdAt) + '</span></div>';
+        lastDate = msg.createdAt;
+      }
+      container.innerHTML += createMessageHTML(msg, index);
     });
 
     // Typing indicator
@@ -761,16 +1038,79 @@
 
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;
+
+    // Add reply button event listeners
+    container.querySelectorAll('.wc-reply-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var msgIndex = parseInt(btn.dataset.msgIndex, 10);
+        var msg = messages[msgIndex];
+        if (msg) {
+          setReplyTo(msg);
+        }
+      });
+    });
+
+    // Add click on reply preview to scroll to original message
+    container.querySelectorAll('.wc-message-reply').forEach(function(replyEl) {
+      replyEl.addEventListener('click', function() {
+        var replyToId = replyEl.dataset.replyToId;
+        var targetMsg = container.querySelector('[data-msg-id="' + replyToId + '"]');
+        if (targetMsg) {
+          targetMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetMsg.classList.add('wc-message-highlight');
+          setTimeout(function() {
+            targetMsg.classList.remove('wc-message-highlight');
+          }, 1500);
+        }
+      });
+    });
+  }
+
+  // Set reply to a message
+  function setReplyTo(msg) {
+    replyingTo = msg;
+    var replyBar = document.getElementById('wc-reply-bar');
+    var replySender = document.getElementById('wc-reply-sender');
+    var replyText = document.getElementById('wc-reply-text');
+
+    replySender.textContent = msg.senderType === 'customer' ? 'You' : (msg.senderName || 'Agent');
+    replyText.textContent = msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content;
+    replyBar.classList.remove('wc-hidden');
+
+    // Focus input
+    document.getElementById('wc-input').focus();
+  }
+
+  // Cancel reply
+  function cancelReply() {
+    replyingTo = null;
+    document.getElementById('wc-reply-bar').classList.add('wc-hidden');
   }
 
   // Create message HTML
-  function createMessageHTML(msg) {
-    return `
-      <div class="wc-message ${msg.senderType}">
-        <div class="wc-message-bubble">${escapeHtml(msg.content)}</div>
-        <div class="wc-message-time">${formatTime(msg.createdAt)}</div>
-      </div>
-    `;
+  function createMessageHTML(msg, index) {
+    var replyPreviewHtml = '';
+    if (msg.replyToId && msg.replyToContent) {
+      replyPreviewHtml = '<div class="wc-message-reply" data-reply-to-id="' + escapeHtml(msg.replyToId) + '">' +
+        '<div class="wc-message-reply-bar"></div>' +
+        '<div class="wc-message-reply-content">' +
+          '<span class="wc-message-reply-sender">' + escapeHtml(msg.replyToSender || 'Message') + '</span>' +
+          '<span class="wc-message-reply-text">' + escapeHtml(msg.replyToContent.length > 50 ? msg.replyToContent.substring(0, 50) + '...' : msg.replyToContent) + '</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var replyBtnHtml = index !== null ? '<button class="wc-reply-btn" data-msg-index="' + index + '" aria-label="Reply"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H4V12L12 4L20 12V17H15"/><path d="M9 17V21L15 17"/></svg></button>' : '';
+
+    return '<div class="wc-message-wrapper ' + msg.senderType + '">' +
+      '<div class="wc-message ' + msg.senderType + '" data-msg-id="' + (msg.id || '') + '">' +
+        replyPreviewHtml +
+        '<div class="wc-message-bubble">' + escapeHtml(msg.content) + '</div>' +
+        '<div class="wc-message-time">' + formatTime(msg.createdAt) + '</div>' +
+      '</div>' +
+      replyBtnHtml +
+    '</div>';
   }
 
   // Escape HTML
@@ -837,26 +1177,46 @@
       id: clientMessageId,
       content: content,
       senderType: 'customer',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      replyToId: replyingTo ? replyingTo.id : null,
+      replyToContent: replyingTo ? replyingTo.content : null,
+      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')) : null
     };
+
+    // Save reply info before clearing
+    var replyData = replyingTo ? {
+      replyToId: replyingTo.id,
+      replyToContent: replyingTo.content,
+      replyToSender: replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')
+    } : null;
 
     messages.push(tempMessage);
     input.value = '';
+    cancelReply(); // Clear reply state
     renderMessages();
     document.getElementById('wc-faq').classList.add('wc-hidden');
 
     isSending = true;
 
     try {
+      var requestBody = {
+        conversationId: conversationId,
+        content: content,
+        clientMessageId: clientMessageId,
+        senderType: 'customer'
+      };
+
+      // Add reply data if replying
+      if (replyData) {
+        requestBody.replyToId = replyData.replyToId;
+        requestBody.replyToContent = replyData.replyToContent;
+        requestBody.replyToSender = replyData.replyToSender;
+      }
+
       var res = await fetch(API_URL + '/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: conversationId,
-          content: content,
-          clientMessageId: clientMessageId,
-          senderType: 'customer'
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (res.ok) {

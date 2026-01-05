@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const agent = authResult.agent;
 
     const body = await request.json();
-    const { conversationId, content } = body;
+    const { conversationId, content, replyToId, replyToContent, replyToSender } = body;
 
     if (!conversationId || !content) {
       return NextResponse.json(
@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
         senderName: agent.name,
         source: "dashboard",
         status: "sent",
+        replyToId: replyToId || null,
+        replyToContent: replyToContent || null,
+        replyToSender: replyToSender || null,
       },
       select: {
         id: true,
@@ -56,6 +59,9 @@ export async function POST(request: NextRequest) {
         source: true,
         createdAt: true,
         status: true,
+        replyToId: true,
+        replyToContent: true,
+        replyToSender: true,
       },
     });
 
