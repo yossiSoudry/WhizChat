@@ -243,14 +243,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     loadConversation();
   }, [conversationId]);
 
-  // Handle scroll to bottom
+  // Handle scroll to bottom - must wait for isLoading to be false so DOM is rendered
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (messages.length === 0 || isLoading) return;
 
     // Always scroll on initial load
     if (isInitialLoadRef.current) {
-      // Use multiple attempts to ensure DOM is ready
-      const scrollAttempts = [50, 150, 300];
+      // Use multiple attempts to ensure DOM is ready after skeleton is gone
+      const scrollAttempts = [0, 50, 150, 300];
       scrollAttempts.forEach(delay => {
         setTimeout(() => scrollToBottom(), delay);
       });
@@ -264,7 +264,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
       scrollToBottom();
     }
     prevMessageCountRef.current = messages.length;
-  }, [messages]);
+  }, [messages, isLoading]);
 
   // Focus input on load
   useEffect(() => {
