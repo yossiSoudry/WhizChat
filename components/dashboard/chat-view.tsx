@@ -47,6 +47,8 @@ import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
 import dynamic from "next/dynamic";
 import type { EmojiClickData } from "emoji-picker-react";
+import { Theme } from "emoji-picker-react";
+import { useTheme } from "next-themes";
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -191,6 +193,7 @@ function ChatViewSkeleton() {
 
 export function ChatView({ conversationId, onClose, onStatusChange, onRead, showBackButton = false }: ChatViewProps) {
   const { agent } = useAgent();
+  const { resolvedTheme } = useTheme();
   const [conversation, setConversation] = useState<ConversationDetails | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -1291,6 +1294,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                         searchPlaceholder="חיפוש אימוג'י..."
                         width={320}
                         height={400}
+                        theme={resolvedTheme === "dark" ? Theme.DARK : Theme.LIGHT}
                       />
                     </div>
                   )}
