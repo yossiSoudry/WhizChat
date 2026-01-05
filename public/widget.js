@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.3.1';
+  var WIDGET_VERSION = '1.4.0';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -124,6 +124,39 @@
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
+
+  // Format date for separators (Today, Yesterday, or full date)
+  function formatDateSeparator(dateString) {
+    var date = new Date(dateString);
+    var today = new Date();
+    var yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Reset times for comparison
+    var dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    var todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    var yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+      return 'Today';
+    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    }
+  }
+
+  // Check if two dates are the same day
+  function isSameDay(date1, date2) {
+    var d1 = new Date(date1);
+    var d2 = new Date(date2);
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+  }
+
+  // Reply state
+  var replyingTo = null;
 
   // Update widget colors dynamically
   function updateWidgetColors() {
@@ -711,6 +744,200 @@
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.1); }
       }
+
+      /* Date separator */
+      .whizchat-date-separator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 0;
+        margin: 8px 0;
+      }
+
+      .whizchat-date-separator span {
+        display: inline-block;
+        background: #f3f4f6;
+        color: #6b7280;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 12px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+      }
+
+      /* Reply bar above input */
+      .whizchat-reply-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .whizchat-reply-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .whizchat-reply-indicator {
+        width: 3px;
+        height: 32px;
+        background: var(--widget-primary);
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .whizchat-reply-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .whizchat-reply-sender {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--widget-primary);
+      }
+
+      .whizchat-reply-text {
+        font-size: 12px;
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .whizchat-reply-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        cursor: pointer;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+
+      .whizchat-reply-close:hover {
+        background: #e5e7eb;
+      }
+
+      /* Reply button on messages */
+      .whizchat-message-wrapper {
+        position: relative;
+      }
+
+      .whizchat-reply-btn {
+        display: none;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        color: #6b7280;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .whizchat-message-wrapper.customer .whizchat-reply-btn {
+        left: -36px;
+      }
+
+      .whizchat-message-wrapper.agent .whizchat-reply-btn,
+      .whizchat-message-wrapper.bot .whizchat-reply-btn {
+        right: -36px;
+      }
+
+      .whizchat-message-wrapper:hover .whizchat-reply-btn {
+        display: flex;
+      }
+
+      .whizchat-reply-btn:hover {
+        background: #f3f4f6;
+        color: var(--widget-primary);
+      }
+
+      .whizchat-reply-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Reply preview in message bubble */
+      .whizchat-message-reply-preview {
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+        padding: 8px;
+        margin-bottom: 4px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .whizchat-message.customer .whizchat-message-reply-preview {
+        background: rgba(255,255,255,0.2);
+      }
+
+      .whizchat-message-reply-bar {
+        width: 3px;
+        background: var(--widget-primary);
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .whizchat-message.customer .whizchat-message-reply-bar {
+        background: rgba(255,255,255,0.5);
+      }
+
+      .whizchat-message-reply-content {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .whizchat-message-reply-sender {
+        font-weight: 600;
+        color: var(--widget-primary);
+        margin-bottom: 2px;
+      }
+
+      .whizchat-message.customer .whizchat-message-reply-sender {
+        color: rgba(255,255,255,0.9);
+      }
+
+      .whizchat-message-reply-text {
+        color: #6b7280;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .whizchat-message.customer .whizchat-message-reply-text {
+        color: rgba(255,255,255,0.7);
+      }
+
+      /* Message highlight animation */
+      .whizchat-message-highlight {
+        animation: whizchat-highlight 1.5s ease-out;
+      }
+
+      @keyframes whizchat-highlight {
+        0%, 50% { background: rgba(192, 38, 211, 0.2); }
+        100% { background: transparent; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -764,6 +991,22 @@
           <div class="whizchat-faq-list" id="whizchat-faq-list"></div>
         </div>
 
+        <div class="whizchat-reply-bar" id="whizchat-reply-bar" style="display: none;">
+          <div class="whizchat-reply-content">
+            <div class="whizchat-reply-indicator"></div>
+            <div class="whizchat-reply-info">
+              <span id="whizchat-reply-sender" class="whizchat-reply-sender"></span>
+              <span id="whizchat-reply-text" class="whizchat-reply-text"></span>
+            </div>
+          </div>
+          <button id="whizchat-reply-close" class="whizchat-reply-close" aria-label="Cancel reply">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
         <div class="whizchat-input-area">
           <input type="file" id="whizchat-file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
           <button class="whizchat-attach" id="whizchat-attach" title="Attach file">
@@ -807,31 +1050,64 @@
       container.appendChild(welcomeWrapper);
     }
 
-    // Messages
-    state.messages.forEach(function(msg) {
+    // Messages with date separators
+    var lastDate = null;
+    state.messages.forEach(function(msg, index) {
+      // Check if we need a date separator
+      if (!lastDate || !isSameDay(lastDate, msg.createdAt)) {
+        var separator = document.createElement('div');
+        separator.className = 'whizchat-date-separator';
+        separator.innerHTML = '<span>' + formatDateSeparator(msg.createdAt) + '</span>';
+        container.appendChild(separator);
+        lastDate = msg.createdAt;
+      }
+
       // Create wrapper div
       var wrapper = document.createElement('div');
       wrapper.className = 'whizchat-message-wrapper ' + msg.senderType;
+      wrapper.setAttribute('data-msg-index', index);
 
       // Create message bubble
       var bubble = document.createElement('div');
       bubble.className = 'whizchat-message ' + msg.senderType;
+      if (msg.id) {
+        bubble.setAttribute('data-msg-id', msg.id);
+      }
 
       var content = '';
+
+      // Add reply preview if this message is a reply
+      if (msg.replyToId && msg.replyToContent) {
+        content += '<div class="whizchat-message-reply-preview" data-reply-to-id="' + escapeHtml(msg.replyToId) + '">' +
+          '<div class="whizchat-message-reply-bar"></div>' +
+          '<div class="whizchat-message-reply-content">' +
+            '<span class="whizchat-message-reply-sender">' + escapeHtml(msg.replyToSender || 'Message') + '</span>' +
+            '<span class="whizchat-message-reply-text">' + escapeHtml(msg.replyToContent.length > 50 ? msg.replyToContent.substring(0, 50) + '...' : msg.replyToContent) + '</span>' +
+          '</div>' +
+        '</div>';
+      }
+
       // Check if message has file
       if (msg.messageType === 'image' && msg.fileUrl) {
-        content = '<a href="' + msg.fileUrl + '" target="_blank" class="whizchat-image-message"><img src="' + msg.fileUrl + '" alt="' + escapeHtml(msg.fileName || 'Image') + '" /></a>';
+        content += '<a href="' + msg.fileUrl + '" target="_blank" class="whizchat-image-message"><img src="' + msg.fileUrl + '" alt="' + escapeHtml(msg.fileName || 'Image') + '" /></a>';
       } else if (msg.messageType && msg.messageType !== 'text' && msg.fileUrl) {
-        content = '<a href="' + msg.fileUrl + '" target="_blank" download class="whizchat-file-message">' +
+        content += '<a href="' + msg.fileUrl + '" target="_blank" download class="whizchat-file-message">' +
           '<div class="whizchat-file-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
           '<div class="whizchat-file-info"><div class="whizchat-file-name">' + escapeHtml(msg.fileName || 'File') + '</div><div class="whizchat-file-size">' + formatFileSize(msg.fileSize || 0) + '</div></div>' +
           '</a>';
       } else {
-        content = escapeHtml(msg.content);
+        content += '<div class="whizchat-message-text">' + escapeHtml(msg.content) + '</div>';
       }
 
       bubble.innerHTML = content;
       wrapper.appendChild(bubble);
+
+      // Add reply button
+      var replyBtn = document.createElement('button');
+      replyBtn.className = 'whizchat-reply-btn';
+      replyBtn.setAttribute('data-msg-index', index);
+      replyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H4V12L12 4L20 12V17H15"/><path d="M9 17V21L15 17"/></svg>';
+      wrapper.appendChild(replyBtn);
 
       // Create meta line (time + status) - outside the bubble
       var meta = document.createElement('div');
@@ -852,6 +1128,62 @@
 
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;
+
+    // Bind reply button events
+    bindReplyEvents();
+  }
+
+  // Set reply to a message
+  function setReplyTo(msg) {
+    replyingTo = msg;
+    var replyBar = document.getElementById('whizchat-reply-bar');
+    var replySender = document.getElementById('whizchat-reply-sender');
+    var replyText = document.getElementById('whizchat-reply-text');
+
+    replySender.textContent = msg.senderType === 'customer' ? 'You' : (msg.senderName || 'Agent');
+    replyText.textContent = msg.content && msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : (msg.content || '');
+    replyBar.style.display = 'flex';
+
+    // Focus input
+    document.getElementById('whizchat-input').focus();
+  }
+
+  // Cancel reply
+  function cancelReply() {
+    replyingTo = null;
+    document.getElementById('whizchat-reply-bar').style.display = 'none';
+  }
+
+  // Bind reply button events
+  function bindReplyEvents() {
+    // Reply buttons
+    var replyBtns = document.querySelectorAll('.whizchat-reply-btn');
+    replyBtns.forEach(function(btn) {
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        var msgIndex = parseInt(btn.getAttribute('data-msg-index'), 10);
+        var msg = state.messages[msgIndex];
+        if (msg) {
+          setReplyTo(msg);
+        }
+      };
+    });
+
+    // Reply previews (click to scroll to original)
+    var replyPreviews = document.querySelectorAll('.whizchat-message-reply-preview');
+    replyPreviews.forEach(function(preview) {
+      preview.onclick = function() {
+        var replyToId = preview.getAttribute('data-reply-to-id');
+        var targetMsg = document.querySelector('[data-msg-id="' + replyToId + '"]');
+        if (targetMsg) {
+          targetMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetMsg.classList.add('whizchat-message-highlight');
+          setTimeout(function() {
+            targetMsg.classList.remove('whizchat-message-highlight');
+          }, 1500);
+        }
+      };
+    });
   }
 
   // Render FAQ
@@ -1063,24 +1395,44 @@
       senderType: 'customer',
       senderName: null,
       source: 'widget',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      replyToId: replyingTo ? replyingTo.id : null,
+      replyToContent: replyingTo ? replyingTo.content : null,
+      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')) : null
     };
+
+    // Save reply info before clearing
+    var replyData = replyingTo ? {
+      replyToId: replyingTo.id,
+      replyToContent: replyingTo.content,
+      replyToSender: replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')
+    } : null;
 
     state.messages.push(tempMessage);
     state.isSending = true;
     document.getElementById('whizchat-input').value = '';
+    cancelReply(); // Clear reply state
     renderMessages();
     renderFAQ();
+
+    var requestBody = {
+      conversationId: state.conversationId,
+      content: content,
+      clientMessageId: clientMessageId,
+      senderType: 'customer'
+    };
+
+    // Add reply data if replying
+    if (replyData) {
+      requestBody.replyToId = replyData.replyToId;
+      requestBody.replyToContent = replyData.replyToContent;
+      requestBody.replyToSender = replyData.replyToSender;
+    }
 
     fetch(API_BASE_URL + '/api/chat/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        conversationId: state.conversationId,
-        content: content,
-        clientMessageId: clientMessageId,
-        senderType: 'customer'
-      })
+      body: JSON.stringify(requestBody)
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -1215,6 +1567,9 @@
         sendMessage(this.value);
       }
     };
+
+    // Reply close button
+    document.getElementById('whizchat-reply-close').onclick = cancelReply;
 
     // File upload events
     document.getElementById('whizchat-attach').onclick = function() {
