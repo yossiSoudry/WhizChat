@@ -666,6 +666,9 @@
         requestBody.anonUserId = ANON_USER_ID;
       }
 
+      // Debug log
+      console.log('[WhizChat] Init with:', { WP_USER_ID: WP_USER_ID, requestBody: requestBody });
+
       var res = await fetch(API_URL + '/api/chat/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

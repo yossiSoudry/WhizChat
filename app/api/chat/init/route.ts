@@ -11,6 +11,15 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // Log incoming request for debugging
+    console.log("Chat init request:", {
+      wpUserId: body.wpUserId,
+      wpUserEmail: body.wpUserEmail,
+      wpUserName: body.wpUserName,
+      anonUserId: body.anonUserId,
+    });
+
     const validatedData = chatInitSchema.parse(body);
 
     const { wpUserId, wpUserEmail, wpUserName, wpUserAvatar, anonUserId } = validatedData;
@@ -22,6 +31,7 @@ export async function POST(request: NextRequest) {
     if (wpUserId) {
       // For WordPress users, always search by wpUserId
       // This ensures each WP user gets their own conversation
+      console.log("Searching for WP user conversation:", wpUserId);
       conversation = await prisma.conversation.findFirst({
         where: { wpUserId, isArchived: false },
         include: {
@@ -40,8 +50,10 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      console.log("WP user conversation search result:", conversation ? conversation.id : "NOT FOUND");
     } else if (anonUserId) {
       // For anonymous users, search by anonUserId
+      console.log("Searching for anonymous user conversation:", anonUserId);
       conversation = await prisma.conversation.findFirst({
         where: { anonUserId, isArchived: false },
         include: {
@@ -64,6 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Create new conversation if not found
     if (!conversation) {
+      console.log("No existing conversation found, creating new one");
       conversation = await prisma.conversation.create({
         data: {
           wpUserId: wpUserId || null,
@@ -77,7 +90,11 @@ export async function POST(request: NextRequest) {
           messages: true,
         },
       });
-    } else if (wpUserId && (wpUserName || wpUserAvatar || wpUserEmail)) {
+    } else {
+      console.log("Found existing conversation:", conversation.id);
+    }
+
+    if (wpUserId && conversation && (wpUserName || wpUserAvatar || wpUserEmail)) {
       // Update user info if it has changed (for existing conversations)
       await prisma.conversation.update({
         where: { id: conversation.id },

@@ -2,11 +2,15 @@ import { z } from "zod";
 
 // Chat Init - Create or get existing conversation
 export const chatInitSchema = z.object({
-  // WordPress user (optional)
-  wpUserId: z.number().optional(),
-  wpUserEmail: z.string().email().optional(),
-  wpUserName: z.string().optional(),
-  wpUserAvatar: z.string().url().optional(),
+  // WordPress user (optional) - accept both number and string (coerce to number)
+  // Use preprocess to handle undefined/null/empty string properly
+  wpUserId: z.preprocess(
+    (val) => (val === undefined || val === null || val === '' || val === 0) ? undefined : Number(val),
+    z.number().int().positive().optional()
+  ),
+  wpUserEmail: z.string().email().optional().or(z.literal('')).transform(val => val || undefined),
+  wpUserName: z.string().optional().or(z.literal('')).transform(val => val || undefined),
+  wpUserAvatar: z.string().url().optional().or(z.literal('')).transform(val => val || undefined),
   // Anonymous user ID from Supabase
   anonUserId: z.string().uuid().optional(),
 });
