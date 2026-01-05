@@ -969,7 +969,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     )}>
                       <div
                         className={cn(
-                          "max-w-[70%] animate-scale-in",
+                          "max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg animate-scale-in",
                           isSystem && "max-w-[85%]"
                         )}
                       >

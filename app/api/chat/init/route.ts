@@ -136,6 +136,19 @@ export async function POST(request: NextRequest) {
 
     // Check if any agent is online (connected in the last 60 seconds)
     const onlineThreshold = new Date(Date.now() - 60 * 1000);
+
+    // Debug: log all agents status
+    const allAgents = await prisma.agent.findMany({
+      select: { id: true, name: true, isActive: true, isOnline: true, lastSeenAt: true },
+    });
+    console.log("All agents status:", allAgents.map(a => ({
+      name: a.name,
+      isActive: a.isActive,
+      isOnline: a.isOnline,
+      lastSeenAt: a.lastSeenAt?.toISOString(),
+      secondsAgo: a.lastSeenAt ? Math.floor((Date.now() - a.lastSeenAt.getTime()) / 1000) : null,
+    })));
+
     const onlineAgent = await prisma.agent.findFirst({
       where: {
         isActive: true,
