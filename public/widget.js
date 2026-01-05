@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.4.0';
+  var WIDGET_VERSION = '1.5.0';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -431,208 +431,171 @@
         border-color: var(--widget-primary);
       }
 
-      /* Modern Input Area - Glass morphism style */
+      /* WhatsApp-style unified input bar */
       .whizchat-input-area {
-        padding: 16px;
-        background: linear-gradient(180deg, rgba(249, 250, 251, 0.8) 0%, rgba(255, 255, 255, 0.95) 100%);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        padding: 10px 12px 12px;
+        background: #f0f2f5;
         display: flex;
-        gap: 10px;
-        align-items: center;
+        gap: 8px;
+        align-items: flex-end;
         position: relative;
       }
 
-      /* Action buttons container */
-      .whizchat-input-actions {
+      /* Unified input container - all elements inside one "bubble" */
+      .whizchat-input-container {
+        flex: 1;
         display: flex;
         align-items: center;
-        gap: 2px;
-        padding: 4px;
-        background: rgba(0, 0, 0, 0.04);
-        border-radius: 12px;
+        background: white;
+        border-radius: 24px;
+        padding: 4px 4px 4px 6px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        min-height: 48px;
       }
 
+      /* Action buttons inside unified container */
       .whizchat-action-btn {
         background: transparent;
         border: none;
         cursor: pointer;
         width: 36px;
         height: 36px;
-        border-radius: 10px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #64748b;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
+        color: #54656f;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
       }
 
       .whizchat-action-btn:hover {
-        background: white;
+        background: #f0f2f5;
         color: var(--widget-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transform: translateY(-1px);
       }
 
       .whizchat-action-btn:active {
-        transform: translateY(0) scale(0.95);
+        transform: scale(0.92);
       }
 
       .whizchat-action-btn svg {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
       }
 
       .whizchat-action-btn.emoji-btn {
-        font-size: 18px;
+        font-size: 22px;
+        line-height: 1;
       }
 
       /* Emoji Picker */
       .whizchat-emoji-picker {
         position: absolute;
-        bottom: 70px;
-        left: 16px;
+        bottom: 68px;
+        left: 12px;
         background: white;
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
-        padding: 12px;
+        border-radius: 12px;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.18);
+        padding: 10px;
         display: none;
         z-index: 10;
-        width: 290px;
-        animation: whizchat-slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 280px;
       }
 
       .whizchat-emoji-picker.open {
         display: block;
+        animation: whizchat-slideUp 0.18s ease-out;
       }
 
       @keyframes whizchat-slideUp {
-        from {
-          opacity: 0;
-          transform: translateY(10px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
       }
 
       .whizchat-emoji-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 4px;
+        gap: 2px;
       }
 
       .whizchat-emoji-item {
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
         border: none;
         background: transparent;
         cursor: pointer;
         border-radius: 8px;
-        font-size: 20px;
+        font-size: 22px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.15s ease;
+        transition: background 0.1s;
       }
 
       .whizchat-emoji-item:hover {
-        background: linear-gradient(135deg, rgba(var(--widget-primary-rgb, 99, 102, 241), 0.1), rgba(var(--widget-secondary-rgb, 168, 85, 247), 0.1));
-        transform: scale(1.15);
+        background: #f0f2f5;
       }
 
-      /* Modern Input Field */
-      .whizchat-input-wrapper {
-        flex: 1;
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-
+      /* Input field - seamless inside container */
       .whizchat-input {
-        width: 100%;
-        border: 2px solid transparent;
-        border-radius: 14px;
-        padding: 12px 16px;
-        font-size: 14px;
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 10px 8px;
+        font-size: 15px;
         outline: none;
-        background: white;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.08);
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        min-width: 0;
         direction: ltr;
+        line-height: 1.35;
       }
 
       .whizchat-input::placeholder {
-        color: #94a3b8;
+        color: #8696a0;
       }
 
-      .whizchat-input:focus {
-        border-color: var(--widget-primary);
-        box-shadow: 0 4px 16px rgba(var(--widget-primary-rgb, 99, 102, 241), 0.15),
-                    inset 0 0 0 1px var(--widget-primary);
-        background: white;
-      }
-
-      /* Send Button - Premium style */
-      .whizchat-send {
+      /* Inner send button - inside the container */
+      .whizchat-send-inner {
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         border: none;
-        border-radius: 14px;
-        width: 46px;
-        height: 46px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 15px rgba(var(--widget-primary-rgb, 99, 102, 241), 0.35);
-        position: relative;
-        overflow: hidden;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
       }
 
-      .whizchat-send::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
-        opacity: 0;
-        transition: opacity 0.25s;
+      .whizchat-send-inner:hover:not(:disabled) {
+        transform: scale(1.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
 
-      .whizchat-send:hover:not(:disabled) {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 6px 25px rgba(var(--widget-primary-rgb, 99, 102, 241), 0.45);
+      .whizchat-send-inner:active:not(:disabled) {
+        transform: scale(0.95);
       }
 
-      .whizchat-send:hover:not(:disabled)::before {
-        opacity: 1;
-      }
-
-      .whizchat-send:active:not(:disabled) {
-        transform: translateY(0) scale(0.98);
-        box-shadow: 0 2px 10px rgba(var(--widget-primary-rgb, 99, 102, 241), 0.3);
-      }
-
-      .whizchat-send:disabled {
+      .whizchat-send-inner:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        box-shadow: none;
       }
 
-      .whizchat-send svg {
+      .whizchat-send-inner svg {
         width: 20px;
         height: 20px;
         fill: white;
-        transition: transform 0.2s;
-        position: relative;
-        z-index: 1;
+        margin-left: 2px;
       }
 
-      .whizchat-send:hover:not(:disabled) svg {
-        transform: translateX(2px);
+      /* Send button alias (same as inner) */
+      .whizchat-send {
+        display: none;
+      }
+
+      .whizchat-send-inner:focus {
+        outline: none;
       }
 
       .whizchat-loading {
@@ -1140,32 +1103,26 @@
         <div class="whizchat-input-area">
           <input type="file" id="whizchat-file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
-          <!-- Action buttons group -->
-          <div class="whizchat-input-actions">
-            <button class="whizchat-action-btn" id="whizchat-attach" title="Attach file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-            <button class="whizchat-action-btn emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
-          </div>
-
           <!-- Emoji picker popup -->
           <div class="whizchat-emoji-picker" id="whizchat-emoji-picker">
             <div class="whizchat-emoji-grid" id="whizchat-emoji-grid"></div>
           </div>
 
-          <!-- Input wrapper -->
-          <div class="whizchat-input-wrapper">
+          <!-- WhatsApp-style unified input container -->
+          <div class="whizchat-input-container">
+            <button class="whizchat-action-btn emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
+            <button class="whizchat-action-btn" id="whizchat-attach" title="Attach file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
             <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Type a message..." />
+            <button class="whizchat-send-inner" id="whizchat-send">
+              <svg viewBox="0 0 24 24">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
           </div>
-
-          <!-- Send button -->
-          <button class="whizchat-send" id="whizchat-send">
-            <svg viewBox="0 0 24 24">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
         </div>
       </div>
     `;
