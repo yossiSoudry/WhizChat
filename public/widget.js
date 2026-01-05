@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.5.0';
+  var WIDGET_VERSION = '1.6.0';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -27,7 +27,12 @@
   };
 
   // Config from window object (can be overridden by WordPress config)
-  var config = window.WHIZCHAT_CONFIG || {};
+  // Re-read on init to handle async script loading in Next.js
+  function getConfig() {
+    return window.WHIZCHAT_CONFIG || {};
+  }
+
+  var config = getConfig();
   var wpUserId = config.wpUserId;
   var wpUserEmail = config.wpUserEmail;
   var wpUserName = config.wpUserName;
@@ -42,6 +47,26 @@
     theme: config.theme || 'light',
     chatBackground: config.chatBackground || 'none'
   };
+
+  // Re-apply config (handles async loading scenarios)
+  function reloadConfig() {
+    var freshConfig = getConfig();
+    console.log('WhizChat reloading config:', freshConfig);
+
+    // Update user info
+    wpUserId = freshConfig.wpUserId;
+    wpUserEmail = freshConfig.wpUserEmail;
+    wpUserName = freshConfig.wpUserName;
+    wpUserAvatar = freshConfig.wpUserAvatar;
+
+    // Update widget config
+    widgetConfig.position = freshConfig.position || widgetConfig.position;
+    widgetConfig.primaryColor = freshConfig.primaryColor || widgetConfig.primaryColor;
+    widgetConfig.secondaryColor = freshConfig.secondaryColor || widgetConfig.secondaryColor;
+    widgetConfig.language = freshConfig.language || widgetConfig.language;
+    widgetConfig.theme = freshConfig.theme || widgetConfig.theme;
+    widgetConfig.chatBackground = freshConfig.chatBackground || widgetConfig.chatBackground;
+  }
 
   // Translations
   var translations = {
@@ -656,18 +681,21 @@
       /* Input field - seamless inside container */
       .whizchat-input {
         flex: 1;
-        border: none;
-        background: transparent;
+        border: none !important;
+        background: transparent !important;
         padding: 10px 8px;
         font-size: 15px;
-        outline: none;
+        outline: none !important;
         min-width: 0;
         direction: ltr;
         line-height: 1.35;
+        color: #1f2937 !important;
+        -webkit-text-fill-color: #1f2937 !important;
       }
 
       .whizchat-input::placeholder {
-        color: #8696a0;
+        color: #8696a0 !important;
+        -webkit-text-fill-color: #8696a0 !important;
       }
 
       /* Send button - outside the container like WhatsApp */
@@ -1256,11 +1284,13 @@
       }
 
       .whizchat-widget.theme-dark .whizchat-input {
-        color: #f3f4f6;
+        color: #f3f4f6 !important;
+        -webkit-text-fill-color: #f3f4f6 !important;
       }
 
       .whizchat-widget.theme-dark .whizchat-input::placeholder {
-        color: #6b7280;
+        color: #6b7280 !important;
+        -webkit-text-fill-color: #6b7280 !important;
       }
 
       .whizchat-widget.theme-dark .whizchat-action-btn {
@@ -2145,8 +2175,19 @@
 
   // Initialize
   function init() {
+    // Re-read config in case script loaded before config was set (Next.js async loading)
+    reloadConfig();
+
     createStyles();
     createWidget();
+
+    // Update position class based on reloaded config
+    var widget = document.getElementById('whizchat-widget');
+    if (widget) {
+      widget.className = 'whizchat-widget position-' + widgetConfig.position;
+    }
+
+    updateWidgetColors();
     applyThemeAndLanguage();
     bindEvents();
     startPolling();
@@ -2160,7 +2201,7 @@
       });
     }
 
-    console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ')');
+    console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ', bg: ' + widgetConfig.chatBackground + ')');
   }
 
   // Start when DOM is ready
