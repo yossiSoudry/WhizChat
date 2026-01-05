@@ -49,7 +49,13 @@ import dynamic from "next/dynamic";
 import type { EmojiClickData } from "emoji-picker-react";
 
 // Dynamically import EmojiPicker to avoid SSR issues
-const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
+const EmojiPicker = dynamic(
+  () => import("emoji-picker-react").then((mod) => mod.default),
+  {
+    ssr: false,
+    loading: () => <div className="p-4 text-center text-sm text-muted-foreground">טוען...</div>
+  }
+);
 
 // Format date for message separators (היום, אתמול, יום שלישי, or full date)
 function formatDateSeparator(dateString: string): string {
@@ -1238,7 +1244,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 </Button>
               </div>
             )}
-            <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg overflow-hidden">
+            <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg">
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
