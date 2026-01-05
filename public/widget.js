@@ -433,15 +433,24 @@
 
       /* Floating input bar - no background */
       .whizchat-input-area {
+<<<<<<< HEAD
         padding: 8px 12px 12px;
         background: transparent;
+=======
+        padding: 8px 10px 10px;
+        background: #f0f2f5;
+>>>>>>> aeb25e216bff8c09dfc9499f1c063a8c2d5a7d41
         display: flex;
         gap: 8px;
         align-items: center;
         position: relative;
       }
 
+<<<<<<< HEAD
       /* Floating input container */
+=======
+      /* Unified input container - dark bubble like WhatsApp */
+>>>>>>> aeb25e216bff8c09dfc9499f1c063a8c2d5a7d41
       .whizchat-input-container {
         flex: 1;
         display: flex;
@@ -449,7 +458,11 @@
         background: white;
         border-radius: 24px;
         padding: 4px 12px 4px 4px;
+<<<<<<< HEAD
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+=======
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+>>>>>>> aeb25e216bff8c09dfc9499f1c063a8c2d5a7d41
         min-height: 48px;
         border: 1px solid rgba(0, 0, 0, 0.06);
       }
@@ -1106,6 +1119,7 @@
             <div class="whizchat-emoji-grid" id="whizchat-emoji-grid"></div>
           </div>
 
+<<<<<<< HEAD
           <!-- Floating input bubble with emoji on left, media on right -->
           <div class="whizchat-input-container">
             <button class="whizchat-action-btn" id="whizchat-emoji-btn" title="Add emoji">
@@ -1124,6 +1138,17 @@
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
             </button>
+=======
+          <!-- WhatsApp-style: input bubble with emoji on left, attach on right -->
+          <div class="whizchat-input-container">
+            <button class="whizchat-action-btn emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
+            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Message" />
+            <button class="whizchat-action-btn" id="whizchat-attach" title="Attach file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+>>>>>>> aeb25e216bff8c09dfc9499f1c063a8c2d5a7d41
           </div>
 
           <!-- Send button outside the container -->
