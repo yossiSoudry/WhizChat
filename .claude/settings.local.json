@@ -28,7 +28,9 @@
       "Bash(git commit:*)",
       "Bash(find:*)",
       "Bash(npx web-push:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npx dotenv:*)",
+      "Bash(set:*)"
     ]
   }
 }

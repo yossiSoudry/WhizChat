@@ -436,6 +436,67 @@
         border-top: 1px solid #e5e7eb;
         display: flex;
         gap: 8px;
+        align-items: center;
+        position: relative;
+      }
+
+      .whizchat-emoji-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        transition: color 0.2s;
+        font-size: 20px;
+      }
+
+      .whizchat-emoji-btn:hover {
+        color: var(--widget-primary);
+      }
+
+      .whizchat-emoji-picker {
+        position: absolute;
+        bottom: 60px;
+        left: 12px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 8px;
+        display: none;
+        z-index: 10;
+        width: 280px;
+      }
+
+      .whizchat-emoji-picker.open {
+        display: block;
+        animation: whizchat-fadeIn 0.2s ease-out;
+      }
+
+      .whizchat-emoji-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+      }
+
+      .whizchat-emoji-item {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s;
+      }
+
+      .whizchat-emoji-item:hover {
+        background: #f3f4f6;
       }
 
       .whizchat-input {
@@ -1014,6 +1075,10 @@
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
           </button>
+          <button class="whizchat-emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
+          <div class="whizchat-emoji-picker" id="whizchat-emoji-picker">
+            <div class="whizchat-emoji-grid" id="whizchat-emoji-grid"></div>
+          </div>
           <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Type a message..." />
           <button class="whizchat-send" id="whizchat-send">
             <svg viewBox="0 0 24 24">
@@ -1590,6 +1655,57 @@
       state.showSettings = !state.showSettings;
       renderSettings();
     };
+
+    // Emoji picker
+    var emojiPickerOpen = false;
+    var commonEmojis = [
+      '😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥',
+      '😢', '😮', '🤔', '👋', '✨', '💪', '😎', '🙌',
+      '😁', '🥰', '😘', '🤗', '😉', '👏', '💯', '🌟',
+      '😄', '🤣', '💕', '✅', '⭐', '🎊', '💖', '🙂'
+    ];
+
+    // Populate emoji grid
+    var emojiGrid = document.getElementById('whizchat-emoji-grid');
+    commonEmojis.forEach(function(emoji) {
+      var btn = document.createElement('button');
+      btn.className = 'whizchat-emoji-item';
+      btn.textContent = emoji;
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        var input = document.getElementById('whizchat-input');
+        var start = input.selectionStart || input.value.length;
+        var end = input.selectionEnd || input.value.length;
+        input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+        // Close picker
+        document.getElementById('whizchat-emoji-picker').classList.remove('open');
+        emojiPickerOpen = false;
+      };
+      emojiGrid.appendChild(btn);
+    });
+
+    document.getElementById('whizchat-emoji-btn').onclick = function(e) {
+      e.stopPropagation();
+      var picker = document.getElementById('whizchat-emoji-picker');
+      emojiPickerOpen = !emojiPickerOpen;
+      if (emojiPickerOpen) {
+        picker.classList.add('open');
+      } else {
+        picker.classList.remove('open');
+      }
+    };
+
+    // Close emoji picker when clicking outside
+    document.addEventListener('click', function(e) {
+      var picker = document.getElementById('whizchat-emoji-picker');
+      var btn = document.getElementById('whizchat-emoji-btn');
+      if (picker && btn && !picker.contains(e.target) && e.target !== btn) {
+        picker.classList.remove('open');
+        emojiPickerOpen = false;
+      }
+    });
   }
 
   // Poll for new messages (with notifications)

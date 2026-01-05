@@ -45,7 +45,11 @@ import {
 } from "@/components/ui/tooltip";
 import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
-import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import dynamic from "next/dynamic";
+import type { EmojiClickData } from "emoji-picker-react";
+
+// Dynamically import EmojiPicker to avoid SSR issues
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 // Format date for message separators (היום, אתמול, יום שלישי, or full date)
 function formatDateSeparator(dateString: string): string {
@@ -1277,7 +1281,6 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     <div className="absolute bottom-12 right-0 z-50 shadow-lg rounded-lg overflow-hidden">
                       <EmojiPicker
                         onEmojiClick={handleEmojiClick}
-                        theme={Theme.AUTO}
                         lazyLoadEmojis={true}
                         searchPlaceholder="חיפוש אימוג'י..."
                         width={320}
