@@ -41,7 +41,7 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@/components/animate-ui/components/radix/tooltip";
+} from "@/components/ui/tooltip";
 import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
 
@@ -203,17 +203,21 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     onReadRef.current = onRead;
   }, [onRead]);
 
+  // Track if this is initial load for scrolling purposes
+  const isInitialLoadRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
+
   useEffect(() => {
     async function loadConversation() {
       setIsLoading(true);
+      isInitialLoadRef.current = true;
+      prevMessageCountRef.current = 0; // Reset on new conversation
+
       try {
         const res = await fetch(`/api/admin/conversations/${conversationId}`);
         const data = await res.json();
         setConversation(data.conversation);
         setMessages(data.messages || []);
-
-        // Scroll to bottom after messages are loaded (with small delay for DOM update)
-        setTimeout(() => scrollToBottom(), 100);
 
         // Mark as read by agent when opening the chat
         const readRes = await fetch("/api/chat/read", {
@@ -239,10 +243,23 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     loadConversation();
   }, [conversationId]);
 
-  // Track previous message count to only auto-scroll on new messages
-  const prevMessageCountRef = useRef(0);
+  // Handle scroll to bottom
   useEffect(() => {
-    // Only auto-scroll if new messages were added (not just status updates)
+    if (messages.length === 0) return;
+
+    // Always scroll on initial load
+    if (isInitialLoadRef.current) {
+      // Use multiple attempts to ensure DOM is ready
+      const scrollAttempts = [50, 150, 300];
+      scrollAttempts.forEach(delay => {
+        setTimeout(() => scrollToBottom(), delay);
+      });
+      isInitialLoadRef.current = false;
+      prevMessageCountRef.current = messages.length;
+      return;
+    }
+
+    // For subsequent updates, only scroll if new messages were added
     if (messages.length > prevMessageCountRef.current) {
       scrollToBottom();
     }
