@@ -175,10 +175,18 @@ export default function ConversationsPage() {
 
   // Check for direct conversation link on mount only
   useEffect(() => {
+    // First check sessionStorage
     const storedConversationId = sessionStorage.getItem("selectedConversationId");
     if (storedConversationId) {
       setSelectedId(storedConversationId);
       sessionStorage.removeItem("selectedConversationId");
+    }
+    // Then check URL hash for mobile deep linking (e.g., #chat/abc-123)
+    else if (window.location.hash.startsWith("#chat/")) {
+      const hashConversationId = window.location.hash.replace("#chat/", "");
+      if (hashConversationId) {
+        setSelectedId(hashConversationId);
+      }
     }
     // Initial fetch
     fetchFilterCounts();
@@ -252,15 +260,42 @@ export default function ConversationsPage() {
     }
   }, [showSearchInput]);
 
-  // Handle mobile chat selection
+  // Handle mobile chat selection - push to history for back button support
   const handleSelectConversation = useCallback((id: string) => {
     setSelectedId(id);
-  }, []);
+    // On mobile, push state to history so back button works
+    if (isMobile) {
+      window.history.pushState({ conversationId: id }, "", `#chat/${id}`);
+    }
+  }, [isMobile]);
 
   // Handle going back from chat view on mobile
   const handleBackToList = useCallback(() => {
     setSelectedId(null);
-  }, []);
+    // On mobile, replace the current history entry to clean up
+    if (isMobile && window.location.hash.startsWith("#chat/")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [isMobile]);
+
+  // Handle browser back button on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      // If we have a selected conversation and user pressed back
+      if (selectedId && !event.state?.conversationId) {
+        setSelectedId(null);
+      }
+      // If the state has a conversation ID, select it
+      else if (event.state?.conversationId) {
+        setSelectedId(event.state.conversationId);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isMobile, selectedId]);
 
   return (
     <div className="flex h-full flex-col">

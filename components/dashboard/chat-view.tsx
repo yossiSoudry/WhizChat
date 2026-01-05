@@ -212,6 +212,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         setConversation(data.conversation);
         setMessages(data.messages || []);
 
+        // Scroll to bottom after messages are loaded (with small delay for DOM update)
+        setTimeout(() => scrollToBottom(), 100);
+
         // Mark as read by agent when opening the chat
         const readRes = await fetch("/api/chat/read", {
           method: "POST",
@@ -392,9 +395,21 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   };
 
 
-  function scrollToBottom() {
+  function scrollToBottom(smooth = false) {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          if (smooth) {
+            scrollRef.current.scrollTo({
+              top: scrollRef.current.scrollHeight,
+              behavior: "smooth"
+            });
+          } else {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }
+      });
     }
   }
 
@@ -1020,8 +1035,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={scrollToBottom}
-                className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all"
+                onClick={() => scrollToBottom(true)}
+                className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all hover:scale-105"
               >
                 <ArrowDownCircle className="w-5 h-5 text-muted-foreground" />
               </button>

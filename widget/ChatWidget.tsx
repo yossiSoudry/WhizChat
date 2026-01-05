@@ -259,6 +259,17 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     }
   }, [apiUrl, wpUserId, wpUserEmail, wpUserName, wpUserAvatar]);
 
+  // Reset conversation when wpUserId changes (different user logged in)
+  const prevWpUserIdRef = useRef(wpUserId);
+  useEffect(() => {
+    if (prevWpUserIdRef.current !== wpUserId) {
+      // User changed - reset conversation
+      setConversationId(null);
+      setMessages([]);
+      prevWpUserIdRef.current = wpUserId;
+    }
+  }, [wpUserId]);
+
   // Initialize on first open
   useEffect(() => {
     if (isOpen && !conversationId) {

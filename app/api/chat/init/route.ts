@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
 
     // First, try to find existing conversation
     if (wpUserId) {
+      // For WordPress users, always search by wpUserId
+      // This ensures each WP user gets their own conversation
       conversation = await prisma.conversation.findFirst({
         where: { wpUserId, isArchived: false },
         include: {
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (anonUserId) {
+      // For anonymous users, search by anonUserId
       conversation = await prisma.conversation.findFirst({
         where: { anonUserId, isArchived: false },
         include: {

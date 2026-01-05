@@ -47,6 +47,7 @@
   var pollInterval = null;
   var typingInterval = null;
   var presenceInterval = null;
+  var lastWpUserId = WP_USER_ID; // Track current WP user ID to detect user changes
 
   // Generate unique ID
   function generateId() {
@@ -612,6 +613,21 @@
       chatWindow.classList.remove('wc-hidden');
     } else {
       chatWindow.classList.add('wc-hidden');
+    }
+
+    // Check if WP user has changed (e.g., different user logged in)
+    // Re-read config in case it was updated after page load
+    var currentConfig = window.WhizChatConfig || {};
+    var currentWpUserId = currentConfig.wpUserId || null;
+
+    // If wpUserId changed, reset and reinitialize
+    if (currentWpUserId !== lastWpUserId) {
+      conversationId = null;
+      messages = [];
+      lastWpUserId = currentWpUserId;
+      WP_USER_ID = currentWpUserId;
+      WP_USER_EMAIL = currentConfig.wpUserEmail || null;
+      WP_USER_NAME = currentConfig.wpUserName || null;
     }
 
     if (isOpen && !conversationId) {
