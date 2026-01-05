@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/tooltip";
 import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 
 // Format date for message separators (היום, אתמול, יום שלישי, or full date)
 function formatDateSeparator(dateString: string): string {
@@ -195,12 +196,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [searchResults, setSearchResults] = useState<number[]>([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageSearchInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Store onRead in a ref to avoid dependency issues
   const onReadRef = useRef(onRead);
@@ -480,6 +483,44 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
       messageSearchInputRef.current.focus();
     }
   }, [showMessageSearch]);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+
+    if (showEmojiPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
+  // Handle emoji selection
+  function handleEmojiClick(emojiData: EmojiClickData) {
+    const emoji = emojiData.emoji;
+    const input = inputRef.current;
+
+    if (input) {
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newValue = newMessage.slice(0, start) + emoji + newMessage.slice(end);
+      setNewMessage(newValue);
+
+      // Set cursor position after emoji
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      setNewMessage(prev => prev + emoji);
+    }
+  }
 
   function scrollToMessage(messageIndex: number) {
     const element = messageRefs.current.get(messageIndex);
@@ -1219,14 +1260,32 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     )}
                   </Button>
                 </AnimateIcon>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                >
-                  <Smile className="w-4.5 h-4.5" />
-                </Button>
+                <div className="relative" ref={emojiPickerRef}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "h-9 w-9 text-muted-foreground hover:text-foreground",
+                      showEmojiPicker && "text-primary bg-primary/10"
+                    )}
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  >
+                    <Smile className="w-4.5 h-4.5" />
+                  </Button>
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-12 right-0 z-50 shadow-lg rounded-lg overflow-hidden">
+                      <EmojiPicker
+                        onEmojiClick={handleEmojiClick}
+                        theme={Theme.AUTO}
+                        lazyLoadEmojis={true}
+                        searchPlaceholder="חיפוש אימוג'י..."
+                        width={320}
+                        height={400}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <input
                 ref={inputRef}
