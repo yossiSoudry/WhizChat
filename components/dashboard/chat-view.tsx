@@ -239,8 +239,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     loadConversation();
   }, [conversationId]);
 
+  // Track previous message count to only auto-scroll on new messages
+  const prevMessageCountRef = useRef(0);
   useEffect(() => {
-    scrollToBottom();
+    // Only auto-scroll if new messages were added (not just status updates)
+    if (messages.length > prevMessageCountRef.current) {
+      scrollToBottom();
+    }
+    prevMessageCountRef.current = messages.length;
   }, [messages]);
 
   // Focus input on load
@@ -1029,21 +1035,19 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         </div>
       </ScrollArea>
 
-      {/* Scroll to bottom button with Animate UI Fade */}
+      {/* Scroll to bottom button */}
       {showScrollButton && (
-        <Fade inView inViewOnce={false}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => scrollToBottom(true)}
-                className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all hover:scale-105"
-              >
-                <ArrowDownCircle className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">גלול למטה</TooltipContent>
-          </Tooltip>
-        </Fade>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => scrollToBottom(true)}
+              className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 animate-fade-in"
+            >
+              <ArrowDownCircle className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">גלול למטה</TooltipContent>
+        </Tooltip>
       )}
 
       {/* Floating Input */}
