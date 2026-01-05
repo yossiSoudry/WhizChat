@@ -861,7 +861,7 @@ export default function SettingsPage() {
     chatBackground: '${settings.widget.chatBackground}'
   };
 </script>
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.0" defer></script>`}
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.1" defer></script>`}
                       </pre>
                       <Button
                         type="button"
@@ -880,7 +880,7 @@ export default function SettingsPage() {
     chatBackground: '${settings.widget.chatBackground}'
   };
 </script>
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.0" defer></script>`;
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.1" defer></script>`;
                           navigator.clipboard.writeText(code);
                         }}
                       >
@@ -925,7 +925,7 @@ export function WhizChatWidget() {
         \`}
       </Script>
       <Script
-        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.0"
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.1"
         strategy="afterInteractive"
       />
     </>
@@ -964,7 +964,7 @@ export function WhizChatWidget() {
         \`}
       </Script>
       <Script
-        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.0"
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.1"
         strategy="afterInteractive"
       />
     </>

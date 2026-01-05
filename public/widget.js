@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.6.0';
+  var WIDGET_VERSION = '1.6.1';
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -51,7 +51,7 @@
   // Re-apply config (handles async loading scenarios)
   function reloadConfig() {
     var freshConfig = getConfig();
-    console.log('WhizChat reloading config:', freshConfig);
+    console.log('WhizChat reloading config:', JSON.stringify(freshConfig));
 
     // Update user info
     wpUserId = freshConfig.wpUserId;
@@ -59,13 +59,15 @@
     wpUserName = freshConfig.wpUserName;
     wpUserAvatar = freshConfig.wpUserAvatar;
 
-    // Update widget config
-    widgetConfig.position = freshConfig.position || widgetConfig.position;
-    widgetConfig.primaryColor = freshConfig.primaryColor || widgetConfig.primaryColor;
-    widgetConfig.secondaryColor = freshConfig.secondaryColor || widgetConfig.secondaryColor;
-    widgetConfig.language = freshConfig.language || widgetConfig.language;
-    widgetConfig.theme = freshConfig.theme || widgetConfig.theme;
-    widgetConfig.chatBackground = freshConfig.chatBackground || widgetConfig.chatBackground;
+    // Update widget config - use fresh values if they exist (check explicitly for undefined)
+    if (freshConfig.position !== undefined) widgetConfig.position = freshConfig.position;
+    if (freshConfig.primaryColor !== undefined) widgetConfig.primaryColor = freshConfig.primaryColor;
+    if (freshConfig.secondaryColor !== undefined) widgetConfig.secondaryColor = freshConfig.secondaryColor;
+    if (freshConfig.language !== undefined) widgetConfig.language = freshConfig.language;
+    if (freshConfig.theme !== undefined) widgetConfig.theme = freshConfig.theme;
+    if (freshConfig.chatBackground !== undefined) widgetConfig.chatBackground = freshConfig.chatBackground;
+
+    console.log('WhizChat config after reload:', JSON.stringify(widgetConfig));
   }
 
   // Translations
