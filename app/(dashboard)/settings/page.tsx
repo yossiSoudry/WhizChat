@@ -82,6 +82,9 @@ interface Settings {
     position: "left" | "right";
     primaryColor: string;
     secondaryColor: string;
+    language: "en" | "he";
+    theme: "light" | "dark" | "auto";
+    chatBackground: string;
   };
   whatsapp: {
     businessPhone: string;
@@ -137,6 +140,9 @@ const DEFAULT_SETTINGS: Settings = {
     position: "right",
     primaryColor: "#A31CAF",
     secondaryColor: "#39C3EF",
+    language: "en",
+    theme: "light",
+    chatBackground: "none",
   },
   whatsapp: {
     businessPhone: "",
@@ -716,6 +722,123 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-3">
+                    <Label>שפה וכיוון</Label>
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant={settings.widget.language === "en" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, language: "en" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        English (LTR)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={settings.widget.language === "he" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, language: "he" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        עברית (RTL)
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>ערכת נושא</Label>
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant={settings.widget.theme === "light" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, theme: "light" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        בהיר
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={settings.widget.theme === "dark" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, theme: "dark" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        כהה
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={settings.widget.theme === "auto" ? "default" : "outline"}
+                        onClick={() =>
+                          setSettings({
+                            ...settings,
+                            widget: { ...settings.widget, theme: "auto" },
+                          })
+                        }
+                        className="flex-1"
+                      >
+                        אוטומטי
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      אוטומטי - יתאים את עצמו להגדרות המערכת של המשתמש
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>רקע צ'אט</Label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { id: "none", label: "ללא", preview: "bg-white" },
+                        { id: "dots", label: "נקודות", preview: "bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-[size:16px_16px]" },
+                        { id: "grid", label: "רשת", preview: "bg-[linear-gradient(#e5e7eb_1px,transparent_1px),linear-gradient(90deg,#e5e7eb_1px,transparent_1px)] bg-[size:20px_20px]" },
+                        { id: "waves", label: "גלים", preview: "bg-gradient-to-br from-blue-50 to-purple-50" },
+                        { id: "bubbles", label: "בועות", preview: "bg-gradient-to-br from-pink-50 via-white to-cyan-50" },
+                        { id: "doodles", label: "דודלס", preview: "bg-[url('/patterns/doodles.svg')] bg-repeat bg-[length:200px]" },
+                        { id: "geometric", label: "גיאומטרי", preview: "bg-[url('/patterns/geometric.svg')] bg-repeat bg-[length:100px]" },
+                        { id: "confetti", label: "קונפטי", preview: "bg-[url('/patterns/confetti.svg')] bg-repeat bg-[length:150px]" },
+                      ].map((bg) => (
+                        <button
+                          key={bg.id}
+                          type="button"
+                          onClick={() =>
+                            setSettings({
+                              ...settings,
+                              widget: { ...settings.widget, chatBackground: bg.id },
+                            })
+                          }
+                          className={`relative aspect-square rounded-xl border-2 transition-all overflow-hidden ${
+                            settings.widget.chatBackground === bg.id
+                              ? "border-primary ring-2 ring-primary/20"
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className={`absolute inset-0 ${bg.preview}`} />
+                          <span className="absolute bottom-1 left-0 right-0 text-[10px] font-medium text-center bg-white/80 backdrop-blur-sm py-0.5">
+                            {bg.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Embed Code - HTML */}
                   <div className="space-y-3 pt-4 border-t">
                     <Label className="flex items-center gap-2">
@@ -732,10 +855,13 @@ export default function SettingsPage() {
   window.WHIZCHAT_CONFIG = {
     position: '${settings.widget.position}',
     primaryColor: '${settings.widget.primaryColor}',
-    secondaryColor: '${settings.widget.secondaryColor}'
+    secondaryColor: '${settings.widget.secondaryColor}',
+    language: '${settings.widget.language}',
+    theme: '${settings.widget.theme}',
+    chatBackground: '${settings.widget.chatBackground}'
   };
 </script>
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0" defer></script>`}
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.5.0" defer></script>`}
                       </pre>
                       <Button
                         type="button"
@@ -748,10 +874,13 @@ export default function SettingsPage() {
   window.WHIZCHAT_CONFIG = {
     position: '${settings.widget.position}',
     primaryColor: '${settings.widget.primaryColor}',
-    secondaryColor: '${settings.widget.secondaryColor}'
+    secondaryColor: '${settings.widget.secondaryColor}',
+    language: '${settings.widget.language}',
+    theme: '${settings.widget.theme}',
+    chatBackground: '${settings.widget.chatBackground}'
   };
 </script>
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0" defer></script>`;
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.5.0" defer></script>`;
                           navigator.clipboard.writeText(code);
                         }}
                       >
@@ -788,12 +917,15 @@ export function WhizChatWidget() {
           window.WHIZCHAT_CONFIG = {
             position: '${settings.widget.position}',
             primaryColor: '${settings.widget.primaryColor}',
-            secondaryColor: '${settings.widget.secondaryColor}'
+            secondaryColor: '${settings.widget.secondaryColor}',
+            language: '${settings.widget.language}',
+            theme: '${settings.widget.theme}',
+            chatBackground: '${settings.widget.chatBackground}'
           };
         \`}
       </Script>
       <Script
-        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0"
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.5.0"
         strategy="afterInteractive"
       />
     </>
@@ -824,12 +956,15 @@ export function WhizChatWidget() {
           window.WHIZCHAT_CONFIG = {
             position: '${settings.widget.position}',
             primaryColor: '${settings.widget.primaryColor}',
-            secondaryColor: '${settings.widget.secondaryColor}'
+            secondaryColor: '${settings.widget.secondaryColor}',
+            language: '${settings.widget.language}',
+            theme: '${settings.widget.theme}',
+            chatBackground: '${settings.widget.chatBackground}'
           };
         \`}
       </Script>
       <Script
-        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.3.0"
+        src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.5.0"
         strategy="afterInteractive"
       />
     </>

@@ -37,7 +37,88 @@
   var widgetConfig = {
     position: config.position || 'right',
     primaryColor: config.primaryColor || '#C026D3',
-    secondaryColor: config.secondaryColor || '#A21CAF'
+    secondaryColor: config.secondaryColor || '#A21CAF',
+    language: config.language || 'en',
+    theme: config.theme || 'light',
+    chatBackground: config.chatBackground || 'none'
+  };
+
+  // Translations
+  var translations = {
+    en: {
+      title: 'WhizChat',
+      online: 'Online',
+      offline: 'Offline',
+      placeholder: 'Message',
+      faqTitle: 'Frequently Asked:',
+      settingsTitle: 'Notification Settings',
+      sounds: 'Sounds',
+      notifications: 'Notifications',
+      notificationsBlocked: 'Notifications blocked',
+      enable: 'Enable',
+      today: 'Today',
+      yesterday: 'Yesterday',
+      you: 'You',
+      agent: 'Agent'
+    },
+    he: {
+      title: 'צ\'אט תמיכה',
+      online: 'מחובר',
+      offline: 'לא מחובר',
+      placeholder: 'הודעה',
+      faqTitle: 'שאלות נפוצות:',
+      settingsTitle: 'הגדרות התראות',
+      sounds: 'צלילים',
+      notifications: 'התראות',
+      notificationsBlocked: 'התראות חסומות',
+      enable: 'הפעל',
+      today: 'היום',
+      yesterday: 'אתמול',
+      you: 'את/ה',
+      agent: 'נציג'
+    }
+  };
+
+  // Get current translation
+  function t(key) {
+    return translations[widgetConfig.language][key] || translations.en[key] || key;
+  }
+
+  // Check if RTL language
+  function isRTL() {
+    return widgetConfig.language === 'he';
+  }
+
+  // Get current theme (resolves 'auto' to actual theme)
+  function getCurrentTheme() {
+    if (widgetConfig.theme === 'auto') {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return widgetConfig.theme;
+  }
+
+  // Chat background patterns (CSS)
+  var chatBackgrounds = {
+    none: '',
+    dots: 'background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px); background-size: 16px 16px;',
+    grid: 'background-image: linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 20px 20px;',
+    waves: 'background: linear-gradient(135deg, #f0f4ff 0%, #fdf2f8 50%, #f0fdfa 100%);',
+    bubbles: 'background: linear-gradient(135deg, #fdf2f8 0%, #ffffff 50%, #ecfeff 100%);',
+    doodles: 'background-color: #fafafa; background-image: url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.08\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");',
+    geometric: 'background-color: #fafafa; background-image: url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.06\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'/%3E%3C/g%3E%3C/svg%3E");',
+    confetti: 'background-color: #fafafa; background-image: url("data:image/svg+xml,%3Csvg width=\'52\' height=\'26\' viewBox=\'0 0 52 26\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23c026d3\' fill-opacity=\'0.06\'%3E%3Cpath d=\'M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z\' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");'
+  };
+
+  // Dark mode chat backgrounds
+  var chatBackgroundsDark = {
+    none: '',
+    dots: 'background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 16px 16px;',
+    grid: 'background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px); background-size: 20px 20px;',
+    waves: 'background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%);',
+    bubbles: 'background: linear-gradient(135deg, #312e81 0%, #1f2937 50%, #134e4a 100%);',
+    doodles: 'background-color: #1f2937; background-image: url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.12\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");',
+    geometric: 'background-color: #1f2937; background-image: url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.08\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'/%3E%3C/g%3E%3C/svg%3E");',
+    confetti: 'background-color: #1f2937; background-image: url("data:image/svg+xml,%3Csvg width=\'52\' height=\'26\' viewBox=\'0 0 52 26\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23c026d3\' fill-opacity=\'0.1\'%3E%3Cpath d=\'M10 10c0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6h2c0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4 3.314 0 6 2.686 6 6 0 2.21 1.79 4 4 4v2c-3.314 0-6-2.686-6-6 0-2.21-1.79-4-4-4-3.314 0-6-2.686-6-6zm25.464-1.95l8.486 8.486-1.414 1.414-8.486-8.486 1.414-1.414z\' /%3E%3C/g%3E%3C/g%3E%3C/svg%3E");'
   };
 
   // Load settings from localStorage
@@ -115,7 +196,8 @@
   // Format time
   function formatTime(dateString) {
     var date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    var locale = isRTL() ? 'he-IL' : 'en-US';
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: !isRTL() });
   }
 
   // Format file size
@@ -138,11 +220,12 @@
     var yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
 
     if (dateOnly.getTime() === todayOnly.getTime()) {
-      return 'Today';
+      return t('today');
     } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
-      return 'Yesterday';
+      return t('yesterday');
     } else {
-      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      var locale = isRTL() ? 'he-IL' : 'en-US';
+      return date.toLocaleDateString(locale, { weekday: 'long', month: 'short', day: 'numeric' });
     }
   }
 
@@ -165,6 +248,44 @@
       widget.style.setProperty('--widget-primary', widgetConfig.primaryColor);
       widget.style.setProperty('--widget-secondary', widgetConfig.secondaryColor);
     }
+  }
+
+  // Apply theme and language settings
+  function applyThemeAndLanguage() {
+    var widget = document.querySelector('.whizchat-widget');
+    if (!widget) return;
+
+    var isDark = getCurrentTheme() === 'dark';
+    var rtl = isRTL();
+
+    // Apply theme class
+    widget.classList.remove('theme-light', 'theme-dark');
+    widget.classList.add(isDark ? 'theme-dark' : 'theme-light');
+
+    // Apply RTL class
+    widget.classList.remove('lang-ltr', 'lang-rtl');
+    widget.classList.add(rtl ? 'lang-rtl' : 'lang-ltr');
+
+    // Apply chat background
+    var messagesContainer = document.getElementById('whizchat-messages');
+    if (messagesContainer) {
+      var bgKey = widgetConfig.chatBackground || 'none';
+      var bgStyle = isDark ? (chatBackgroundsDark[bgKey] || '') : (chatBackgrounds[bgKey] || '');
+      messagesContainer.style.cssText = bgStyle;
+    }
+
+    // Update text content based on language
+    var titleEl = document.querySelector('.whizchat-header-title');
+    if (titleEl) titleEl.textContent = t('title');
+
+    var statusText = document.getElementById('whizchat-status-text');
+    if (statusText) statusText.textContent = state.isOnline ? t('online') : t('offline');
+
+    var inputEl = document.getElementById('whizchat-input');
+    if (inputEl) inputEl.placeholder = t('placeholder');
+
+    var faqTitle = document.querySelector('.whizchat-faq-title');
+    if (faqTitle) faqTitle.textContent = t('faqTitle');
   }
 
   // Create widget styles
@@ -1029,6 +1150,202 @@
         0%, 50% { background: rgba(192, 38, 211, 0.2); }
         100% { background: transparent; }
       }
+
+      /* ==================== RTL STYLES ==================== */
+      .whizchat-widget.lang-rtl {
+        direction: rtl;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-window {
+        direction: rtl;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message.customer {
+        border-bottom-right-radius: 16px;
+        border-bottom-left-radius: 4px;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message.agent,
+      .whizchat-widget.lang-rtl .whizchat-message.bot {
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 4px;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.customer {
+        align-self: flex-start;
+        align-items: flex-start;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.agent,
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.bot {
+        align-self: flex-end;
+        align-items: flex-end;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.customer .whizchat-reply-btn {
+        left: auto;
+        right: -36px;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.agent .whizchat-reply-btn,
+      .whizchat-widget.lang-rtl .whizchat-message-wrapper.bot .whizchat-reply-btn {
+        right: auto;
+        left: -36px;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-input {
+        direction: rtl;
+        text-align: right;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-send-outer svg {
+        margin-left: 0;
+        margin-right: 2px;
+        transform: scaleX(-1);
+      }
+
+      /* ==================== DARK MODE STYLES ==================== */
+      .whizchat-widget.theme-dark .whizchat-window {
+        background: #1f2937;
+        border: 1px solid #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-messages {
+        background: #111827;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-message.agent,
+      .whizchat-widget.theme-dark .whizchat-message.bot {
+        background: #374151;
+        color: #f3f4f6;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-message.system {
+        background: #422006;
+        color: #fbbf24;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-message-time {
+        color: #6b7280;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-faq {
+        background: #1f2937;
+        border-color: #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-faq-title {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-faq-item {
+        background: #374151;
+        border-color: #4b5563;
+        color: #f3f4f6;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-faq-item:hover {
+        background: var(--widget-primary);
+        color: white;
+        border-color: var(--widget-primary);
+      }
+
+      .whizchat-widget.theme-dark .whizchat-input-container {
+        background: #374151;
+        border-color: #4b5563;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-input {
+        color: #f3f4f6;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-input::placeholder {
+        color: #6b7280;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-action-btn {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-action-btn:hover {
+        background: #4b5563;
+        color: var(--widget-primary);
+      }
+
+      .whizchat-widget.theme-dark .whizchat-settings-panel {
+        background: #1f2937;
+        border-color: #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-settings-title {
+        color: #f3f4f6;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-setting-item {
+        border-color: #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-setting-label {
+        color: #f3f4f6;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-setting-label svg {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-toggle {
+        background: #4b5563;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-bar {
+        background: #374151;
+        border-color: #4b5563;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-text {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-close {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-close:hover {
+        background: #4b5563;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-date-separator span {
+        background: #374151;
+        color: #9ca3af;
+        border-color: #4b5563;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-emoji-picker {
+        background: #1f2937;
+        border: 1px solid #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-emoji-item:hover {
+        background: #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-message-reply-preview {
+        background: rgba(255,255,255,0.08);
+      }
+
+      .whizchat-widget.theme-dark .whizchat-message-reply-text {
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-btn {
+        background: #374151;
+        color: #9ca3af;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-btn:hover {
+        background: #4b5563;
+        color: var(--widget-primary);
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1252,7 +1569,7 @@
     var replySender = document.getElementById('whizchat-reply-sender');
     var replyText = document.getElementById('whizchat-reply-text');
 
-    replySender.textContent = msg.senderType === 'customer' ? 'You' : (msg.senderName || 'Agent');
+    replySender.textContent = msg.senderType === 'customer' ? t('you') : (msg.senderName || t('agent'));
     replyText.textContent = msg.content && msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : (msg.content || '');
     replyBar.style.display = 'flex';
 
@@ -1327,10 +1644,10 @@
 
     if (state.isOnline) {
       dot.classList.remove('offline');
-      text.textContent = 'Online';
+      text.textContent = t('online');
     } else {
       dot.classList.add('offline');
-      text.textContent = 'Offline';
+      text.textContent = t('offline');
     }
   }
 
@@ -1352,20 +1669,20 @@
     if (state.pushPermission === 'granted') {
       pushControl = '<button class="whizchat-toggle ' + (state.pushEnabled ? 'on' : '') + '" id="whizchat-push-toggle"></button>';
     } else if (state.pushPermission !== 'denied') {
-      pushControl = '<button class="whizchat-enable-btn" id="whizchat-push-enable">Enable</button>';
+      pushControl = '<button class="whizchat-enable-btn" id="whizchat-push-enable">' + t('enable') + '</button>';
     } else {
-      pushControl = '<span class="whizchat-setting-note">Notifications blocked</span>';
+      pushControl = '<span class="whizchat-setting-note">' + t('notificationsBlocked') + '</span>';
     }
 
     panel.innerHTML =
-      '<div class="whizchat-settings-title">Notification Settings</div>' +
+      '<div class="whizchat-settings-title">' + t('settingsTitle') + '</div>' +
       '<div class="whizchat-setting-item">' +
         '<div class="whizchat-setting-label">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
             '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />' +
             '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />' +
           '</svg>' +
-          'Sounds' +
+          t('sounds') +
         '</div>' +
         '<button class="whizchat-toggle ' + (state.soundEnabled ? 'on' : '') + '" id="whizchat-sound-toggle"></button>' +
       '</div>' +
@@ -1375,7 +1692,7 @@
             '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />' +
             '<path d="M13.73 21a2 2 0 0 1-3.46 0" />' +
           '</svg>' +
-          'Notifications' +
+          t('notifications') +
         '</div>' +
         pushControl +
       '</div>';
@@ -1475,14 +1792,24 @@
         }
         if (!config.position && apiWidget.position) {
           widgetConfig.position = apiWidget.position;
-          // Update position class
-          var widget = document.getElementById('whizchat-widget');
-          if (widget) {
-            widget.className = 'whizchat-widget position-' + widgetConfig.position;
-          }
         }
-        // Update colors
+        if (!config.language && apiWidget.language) {
+          widgetConfig.language = apiWidget.language;
+        }
+        if (!config.theme && apiWidget.theme) {
+          widgetConfig.theme = apiWidget.theme;
+        }
+        if (!config.chatBackground && apiWidget.chatBackground) {
+          widgetConfig.chatBackground = apiWidget.chatBackground;
+        }
+        // Update position class
+        var widget = document.getElementById('whizchat-widget');
+        if (widget) {
+          widget.className = 'whizchat-widget position-' + widgetConfig.position;
+        }
+        // Update colors and apply theme/language
         updateWidgetColors();
+        applyThemeAndLanguage();
       }
 
       renderMessages();
@@ -1510,14 +1837,14 @@
       createdAt: new Date().toISOString(),
       replyToId: replyingTo ? replyingTo.id : null,
       replyToContent: replyingTo ? replyingTo.content : null,
-      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')) : null
+      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent'))) : null
     };
 
     // Save reply info before clearing
     var replyData = replyingTo ? {
       replyToId: replyingTo.id,
       replyToContent: replyingTo.content,
-      replyToSender: replyingTo.senderType === 'customer' ? 'You' : (replyingTo.senderName || 'Agent')
+      replyToSender: replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent'))
     } : null;
 
     state.messages.push(tempMessage);
@@ -1820,9 +2147,20 @@
   function init() {
     createStyles();
     createWidget();
+    applyThemeAndLanguage();
     bindEvents();
     startPolling();
-    console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized');
+
+    // Listen for system theme changes (for 'auto' mode)
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+        if (widgetConfig.theme === 'auto') {
+          applyThemeAndLanguage();
+        }
+      });
+    }
+
+    console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ')');
   }
 
   // Start when DOM is ready
