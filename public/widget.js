@@ -431,26 +431,27 @@
         border-color: var(--widget-primary);
       }
 
-      /* WhatsApp-style unified input bar */
+      /* Floating input bar - no background */
       .whizchat-input-area {
-        padding: 10px 12px 12px;
-        background: #f0f2f5;
+        padding: 8px 12px 12px;
+        background: transparent;
         display: flex;
         gap: 8px;
-        align-items: flex-end;
+        align-items: center;
         position: relative;
       }
 
-      /* Unified input container - all elements inside one "bubble" */
+      /* Floating input container */
       .whizchat-input-container {
         flex: 1;
         display: flex;
         align-items: center;
         background: white;
         border-radius: 24px;
-        padding: 4px 4px 4px 6px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        padding: 4px 12px 4px 4px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
         min-height: 48px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
       }
 
       /* Action buttons inside unified container */
@@ -479,13 +480,8 @@
       }
 
       .whizchat-action-btn svg {
-        width: 20px;
-        height: 20px;
-      }
-
-      .whizchat-action-btn.emoji-btn {
-        font-size: 22px;
-        line-height: 1;
+        width: 22px;
+        height: 22px;
       }
 
       /* Emoji Picker */
@@ -553,49 +549,51 @@
         color: #8696a0;
       }
 
-      /* Inner send button - inside the container */
-      .whizchat-send-inner {
+      /* Send button - outside the container like WhatsApp */
+      .whizchat-send-outer {
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         border: none;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.15s ease;
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       }
 
-      .whizchat-send-inner:hover:not(:disabled) {
-        transform: scale(1.08);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      .whizchat-send-outer:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
 
-      .whizchat-send-inner:active:not(:disabled) {
+      .whizchat-send-outer:active:not(:disabled) {
         transform: scale(0.95);
       }
 
-      .whizchat-send-inner:disabled {
+      .whizchat-send-outer:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
 
-      .whizchat-send-inner svg {
-        width: 20px;
-        height: 20px;
+      .whizchat-send-outer svg {
+        width: 22px;
+        height: 22px;
         fill: white;
         margin-left: 2px;
       }
 
-      /* Send button alias (same as inner) */
-      .whizchat-send {
-        display: none;
+      .whizchat-send-outer:focus {
+        outline: none;
       }
 
-      .whizchat-send-inner:focus {
-        outline: none;
+      /* Hide old send classes */
+      .whizchat-send,
+      .whizchat-send-inner {
+        display: none;
       }
 
       .whizchat-loading {
@@ -1108,21 +1106,32 @@
             <div class="whizchat-emoji-grid" id="whizchat-emoji-grid"></div>
           </div>
 
-          <!-- WhatsApp-style unified input container -->
+          <!-- Floating input bubble with emoji on left, media on right -->
           <div class="whizchat-input-container">
-            <button class="whizchat-action-btn emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
-            <button class="whizchat-action-btn" id="whizchat-attach" title="Attach file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            <button class="whizchat-action-btn" id="whizchat-emoji-btn" title="Add emoji">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                <line x1="15" y1="9" x2="15.01" y2="9"/>
               </svg>
             </button>
-            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Type a message..." />
-            <button class="whizchat-send-inner" id="whizchat-send">
-              <svg viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Message" />
+            <button class="whizchat-action-btn" id="whizchat-attach" title="Attach media">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
               </svg>
             </button>
           </div>
+
+          <!-- Send button outside the container -->
+          <button class="whizchat-send-outer" id="whizchat-send">
+            <svg viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
         </div>
       </div>
     `;
