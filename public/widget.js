@@ -433,23 +433,23 @@
 
       /* WhatsApp-style unified input bar */
       .whizchat-input-area {
-        padding: 10px 12px 12px;
+        padding: 8px 10px 10px;
         background: #f0f2f5;
         display: flex;
         gap: 8px;
-        align-items: flex-end;
+        align-items: center;
         position: relative;
       }
 
-      /* Unified input container - all elements inside one "bubble" */
+      /* Unified input container - dark bubble like WhatsApp */
       .whizchat-input-container {
         flex: 1;
         display: flex;
         align-items: center;
         background: white;
         border-radius: 24px;
-        padding: 4px 4px 4px 6px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        padding: 4px 12px 4px 4px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         min-height: 48px;
       }
 
@@ -553,49 +553,51 @@
         color: #8696a0;
       }
 
-      /* Inner send button - inside the container */
-      .whizchat-send-inner {
+      /* Send button - outside the container like WhatsApp */
+      .whizchat-send-outer {
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         border: none;
         border-radius: 50%;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: all 0.15s ease;
         flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
       }
 
-      .whizchat-send-inner:hover:not(:disabled) {
-        transform: scale(1.08);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      .whizchat-send-outer:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
 
-      .whizchat-send-inner:active:not(:disabled) {
+      .whizchat-send-outer:active:not(:disabled) {
         transform: scale(0.95);
       }
 
-      .whizchat-send-inner:disabled {
+      .whizchat-send-outer:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
 
-      .whizchat-send-inner svg {
-        width: 20px;
-        height: 20px;
+      .whizchat-send-outer svg {
+        width: 22px;
+        height: 22px;
         fill: white;
         margin-left: 2px;
       }
 
-      /* Send button alias (same as inner) */
-      .whizchat-send {
-        display: none;
+      .whizchat-send-outer:focus {
+        outline: none;
       }
 
-      .whizchat-send-inner:focus {
-        outline: none;
+      /* Hide old send classes */
+      .whizchat-send,
+      .whizchat-send-inner {
+        display: none;
       }
 
       .whizchat-loading {
@@ -1108,21 +1110,23 @@
             <div class="whizchat-emoji-grid" id="whizchat-emoji-grid"></div>
           </div>
 
-          <!-- WhatsApp-style unified input container -->
+          <!-- WhatsApp-style: input bubble with emoji on left, attach on right -->
           <div class="whizchat-input-container">
             <button class="whizchat-action-btn emoji-btn" id="whizchat-emoji-btn" title="Add emoji">😊</button>
+            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Message" />
             <button class="whizchat-action-btn" id="whizchat-attach" title="Attach file">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
               </svg>
             </button>
-            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Type a message..." />
-            <button class="whizchat-send-inner" id="whizchat-send">
-              <svg viewBox="0 0 24 24">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
-            </button>
           </div>
+
+          <!-- Send button outside the container -->
+          <button class="whizchat-send-outer" id="whizchat-send">
+            <svg viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
         </div>
       </div>
     `;
