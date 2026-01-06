@@ -1632,7 +1632,7 @@
       row.className = 'whizchat-message-row ' + msg.senderType;
 
       // Check if this is the first message in a sequence from the same sender
-      var prevMsg = index > 0 ? messages[index - 1] : null;
+      var prevMsg = index > 0 ? state.messages[index - 1] : null;
       var isFirstInSequence = !prevMsg || prevMsg.senderType !== msg.senderType || prevMsg.senderName !== msg.senderName;
       var isAgentOrBot = msg.senderType === 'agent' || msg.senderType === 'bot';
 
@@ -1676,7 +1676,7 @@
         }
 
         // Only show avatar on last message of sequence (or hide for middle messages)
-        var nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
+        var nextMsg = index < state.messages.length - 1 ? state.messages[index + 1] : null;
         var isLastInSequence = !nextMsg || nextMsg.senderType !== msg.senderType || nextMsg.senderName !== msg.senderName;
         if (!isLastInSequence) {
           avatarElement.style.visibility = 'hidden';
