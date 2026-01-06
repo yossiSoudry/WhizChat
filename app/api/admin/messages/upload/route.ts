@@ -143,6 +143,9 @@ export async function POST(request: NextRequest) {
     // Use caption if provided, otherwise use filename
     const messageContent = caption?.trim() || file.name;
 
+    // Use penName if available, otherwise use real name
+    const displayName = agent.penName || agent.name;
+
     const message = await prisma.message.create({
       data: {
         conversationId,
@@ -154,7 +157,8 @@ export async function POST(request: NextRequest) {
         fileMimeType: file.type,
         senderType: "agent",
         senderId: agent.id,
-        senderName: agent.name,
+        senderName: displayName,
+        senderAvatar: agent.avatarUrl,
         source: "dashboard",
         status: "sent",
       },
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest) {
         fileMimeType: true,
         senderType: true,
         senderName: true,
+        senderAvatar: true,
         source: true,
         createdAt: true,
         status: true,

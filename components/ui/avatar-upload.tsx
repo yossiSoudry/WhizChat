@@ -17,8 +17,42 @@ import {
   CropperArea,
   type CropperAreaData,
 } from "@/components/ui/cropper";
-import { Camera, Loader2, Trash2, ZoomIn, ZoomOut, Check, X } from "lucide-react";
+import { Camera, Loader2, Trash2, ZoomIn, ZoomOut, Check, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Default avatars for agents to choose from
+const DEFAULT_AVATARS = [
+  {
+    id: 1,
+    src: 'https://pbs.twimg.com/profile_images/1897311929028255744/otxpL-ke_400x400.jpg',
+    fallback: 'AK',
+  },
+  {
+    id: 2,
+    src: 'https://pbs.twimg.com/profile_images/1948770261848756224/oPwqXMD6_400x400.jpg',
+    fallback: 'SK',
+  },
+  {
+    id: 3,
+    src: 'https://pbs.twimg.com/profile_images/1593304942210478080/TUYae5z7_400x400.jpg',
+    fallback: 'CN',
+  },
+  {
+    id: 4,
+    src: 'https://pbs.twimg.com/profile_images/1677042510839857154/Kq4tpySA_400x400.jpg',
+    fallback: 'AW',
+  },
+  {
+    id: 5,
+    src: 'https://pbs.twimg.com/profile_images/1783856060249595904/8TfcCN0r_400x400.jpg',
+    fallback: 'GR',
+  },
+  {
+    id: 6,
+    src: 'https://pbs.twimg.com/profile_images/1534700564810018816/anAuSfkp_400x400.jpg',
+    fallback: 'JH',
+  },
+];
 
 interface AvatarUploadProps {
   avatarUrl: string | null;
@@ -121,6 +155,7 @@ export function AvatarUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
+  const [isDefaultAvatarsOpen, setIsDefaultAvatarsOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropperAreaData | null>(null);
@@ -241,6 +276,32 @@ export function AvatarUpload({
     }
   }
 
+  async function handleSelectDefaultAvatar(avatarSrc: string) {
+    setIsUploading(true);
+    setIsDefaultAvatarsOpen(false);
+
+    try {
+      const res = await fetch(`/api/admin/agents/${agentId}/avatar`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: avatarSrc }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        onUpdate(data.avatarUrl);
+      } else {
+        alert(data.error || "שגיאה בעדכון התמונה");
+      }
+    } catch (error) {
+      console.error("Default avatar error:", error);
+      alert("שגיאה בעדכון התמונה");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   const isLoading = isUploading || isDeleting;
 
   return (
@@ -272,8 +333,23 @@ export function AvatarUpload({
                 "rounded-full shadow-md border border-border"
               )}
               onClick={() => fileInputRef.current?.click()}
+              title="העלה תמונה"
             >
               <Camera className={iconSizeClasses[size]} />
+            </Button>
+
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className={cn(
+                buttonSizeClasses[size],
+                "rounded-full shadow-md border border-border"
+              )}
+              onClick={() => setIsDefaultAvatarsOpen(true)}
+              title="בחר אווטר"
+            >
+              <Users className={iconSizeClasses[size]} />
             </Button>
 
             {avatarUrl && (
@@ -286,6 +362,7 @@ export function AvatarUpload({
                   "rounded-full shadow-md"
                 )}
                 onClick={handleDelete}
+                title="מחק תמונה"
               >
                 <Trash2 className={iconSizeClasses[size]} />
               </Button>
@@ -350,6 +427,47 @@ export function AvatarUpload({
             <Button onClick={handleCropConfirm}>
               <Check className="w-4 h-4 ml-2" />
               אישור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Default Avatars Dialog */}
+      <Dialog open={isDefaultAvatarsOpen} onOpenChange={setIsDefaultAvatarsOpen}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>בחר אווטר</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-4 py-4">
+            {DEFAULT_AVATARS.map((avatar) => (
+              <button
+                key={avatar.id}
+                type="button"
+                className={cn(
+                  "relative rounded-full overflow-hidden border-2 transition-all hover:scale-105",
+                  avatarUrl === avatar.src
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-transparent hover:border-muted-foreground/30"
+                )}
+                onClick={() => handleSelectDefaultAvatar(avatar.src)}
+              >
+                <Avatar className="w-full h-auto aspect-square">
+                  <AvatarImage src={avatar.src} alt={`Avatar ${avatar.id}`} />
+                  <AvatarFallback>{avatar.fallback}</AvatarFallback>
+                </Avatar>
+                {avatarUrl === avatar.src && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <Check className="w-6 h-6 text-primary" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDefaultAvatarsOpen(false)}>
+              ביטול
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -87,7 +87,8 @@
       yesterday: 'Yesterday',
       you: 'You',
       agent: 'Agent',
-      replyToMessage: 'Reply'
+      replyToMessage: 'Reply',
+      image: 'Photo'
     },
     he: {
       title: 'צ\'אט תמיכה',
@@ -104,7 +105,8 @@
       yesterday: 'אתמול',
       you: 'את/ה',
       agent: 'נציג',
-      replyToMessage: 'הגב להודעה'
+      replyToMessage: 'הגב להודעה',
+      image: 'תמונה'
     }
   };
 
@@ -1081,6 +1083,20 @@
         flex-shrink: 0;
       }
 
+      .whizchat-reply-thumbnail {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .whizchat-reply-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
       .whizchat-reply-info {
         display: flex;
         flex-direction: column;
@@ -1245,6 +1261,20 @@
         background: var(--widget-primary);
         border-radius: 2px;
         flex-shrink: 0;
+      }
+
+      .whizchat-message-reply-preview .whizchat-reply-thumbnail {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .whizchat-message-reply-preview .whizchat-reply-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       .whizchat-message.customer .whizchat-message-reply-bar {
@@ -1538,6 +1568,7 @@
         <div class="whizchat-reply-bar" id="whizchat-reply-bar" style="display: none;">
           <div class="whizchat-reply-content">
             <div class="whizchat-reply-indicator"></div>
+            <div id="whizchat-reply-thumbnail" class="whizchat-reply-thumbnail" style="display: none;"></div>
             <div class="whizchat-reply-info">
               <span id="whizchat-reply-sender" class="whizchat-reply-sender"></span>
               <span id="whizchat-reply-text" class="whizchat-reply-text"></span>
@@ -1701,12 +1732,21 @@
       var content = '';
 
       // Add reply preview if this message is a reply
-      if (msg.replyToId && msg.replyToContent) {
+      if (msg.replyToId && (msg.replyToContent || msg.replyToMessageType === 'image')) {
+        var replyThumbnail = '';
+        if (msg.replyToMessageType === 'image' && msg.replyToFileUrl) {
+          replyThumbnail = '<div class="whizchat-reply-thumbnail"><img src="' + escapeHtml(msg.replyToFileUrl) + '" alt="" /></div>';
+        }
+        var replyTextContent = msg.replyToMessageType === 'image' && (!msg.replyToContent || !msg.replyToContent.trim())
+          ? t('image')
+          : (msg.replyToContent && msg.replyToContent.length > 50 ? msg.replyToContent.substring(0, 50) + '...' : (msg.replyToContent || ''));
+
         content += '<div class="whizchat-message-reply-preview" data-reply-to-id="' + escapeHtml(msg.replyToId) + '">' +
           '<div class="whizchat-message-reply-bar"></div>' +
+          replyThumbnail +
           '<div class="whizchat-message-reply-content">' +
             '<span class="whizchat-message-reply-sender">' + escapeHtml(msg.replyToSender || 'Message') + '</span>' +
-            '<span class="whizchat-message-reply-text">' + escapeHtml(msg.replyToContent.length > 50 ? msg.replyToContent.substring(0, 50) + '...' : msg.replyToContent) + '</span>' +
+            '<span class="whizchat-message-reply-text">' + escapeHtml(replyTextContent) + '</span>' +
           '</div>' +
         '</div>';
       }
@@ -1777,9 +1817,27 @@
     var replyBar = document.getElementById('whizchat-reply-bar');
     var replySender = document.getElementById('whizchat-reply-sender');
     var replyText = document.getElementById('whizchat-reply-text');
+    var replyThumbnail = document.getElementById('whizchat-reply-thumbnail');
 
     replySender.textContent = msg.senderType === 'customer' ? t('you') : (msg.senderName || t('agent'));
-    replyText.textContent = msg.content && msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : (msg.content || '');
+
+    // Handle image replies
+    if (msg.messageType === 'image' && msg.fileUrl) {
+      if (replyThumbnail) {
+        replyThumbnail.innerHTML = '<img src="' + escapeHtml(msg.fileUrl) + '" alt="" />';
+        replyThumbnail.style.display = 'block';
+      }
+      replyText.textContent = msg.content && msg.content.trim() ?
+        (msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content) :
+        t('image');
+    } else {
+      if (replyThumbnail) {
+        replyThumbnail.innerHTML = '';
+        replyThumbnail.style.display = 'none';
+      }
+      replyText.textContent = msg.content && msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : (msg.content || '');
+    }
+
     replyBar.style.display = 'flex';
 
     // Focus input
@@ -1790,6 +1848,11 @@
   function cancelReply() {
     replyingTo = null;
     document.getElementById('whizchat-reply-bar').style.display = 'none';
+    var replyThumbnail = document.getElementById('whizchat-reply-thumbnail');
+    if (replyThumbnail) {
+      replyThumbnail.innerHTML = '';
+      replyThumbnail.style.display = 'none';
+    }
   }
 
   // Bind reply button events
@@ -2046,14 +2109,18 @@
       createdAt: new Date().toISOString(),
       replyToId: replyingTo ? replyingTo.id : null,
       replyToContent: replyingTo ? replyingTo.content : null,
-      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent'))) : null
+      replyToSender: replyingTo ? (replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent'))) : null,
+      replyToMessageType: replyingTo ? (replyingTo.messageType || 'text') : null,
+      replyToFileUrl: replyingTo ? (replyingTo.fileUrl || null) : null
     };
 
     // Save reply info before clearing
     var replyData = replyingTo ? {
       replyToId: replyingTo.id,
       replyToContent: replyingTo.content,
-      replyToSender: replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent'))
+      replyToSender: replyingTo.senderType === 'customer' ? t('you') : (replyingTo.senderName || t('agent')),
+      replyToMessageType: replyingTo.messageType || 'text',
+      replyToFileUrl: replyingTo.fileUrl || null
     } : null;
 
     state.messages.push(tempMessage);
@@ -2075,6 +2142,8 @@
       requestBody.replyToId = replyData.replyToId;
       requestBody.replyToContent = replyData.replyToContent;
       requestBody.replyToSender = replyData.replyToSender;
+      requestBody.replyToMessageType = replyData.replyToMessageType;
+      requestBody.replyToFileUrl = replyData.replyToFileUrl;
     }
 
     fetch(API_BASE_URL + '/api/chat/send', {
@@ -2375,6 +2444,23 @@
     }, state.isOpen ? 3000 : 10000);
   }
 
+  // Send leave notification when user leaves the page
+  function sendLeaveNotification() {
+    if (!state.conversationId) return;
+
+    // Use sendBeacon for reliable delivery during page unload
+    var data = JSON.stringify({ conversationId: state.conversationId });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(API_BASE_URL + '/api/chat/leave', data);
+    } else {
+      // Fallback for older browsers
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', API_BASE_URL + '/api/chat/leave', false); // Synchronous
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(data);
+    }
+  }
+
   // Initialize
   function init() {
     // Re-read config in case script loaded before config was set (Next.js async loading)
@@ -2402,6 +2488,10 @@
         }
       });
     }
+
+    // Listen for page unload to send leave notification
+    window.addEventListener('beforeunload', sendLeaveNotification);
+    window.addEventListener('pagehide', sendLeaveNotification);
 
     console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ', bg: ' + widgetConfig.chatBackground + ')');
   }

@@ -124,6 +124,75 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 }
 
+// PUT - Set avatar from URL (for default avatars)
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+  try {
+    // Check authentication
+    const authResult = await getAuthenticatedAgent();
+    if (!authResult.success) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
+    }
+
+    const { id } = await params;
+
+    // Only admin can update other agents, but agent can update their own
+    if (id !== authResult.agent.id && !isAdmin(authResult.agent)) {
+      return NextResponse.json(
+        { error: "אין הרשאה לעדכן נציג זה" },
+        { status: 403 }
+      );
+    }
+
+    // Verify agent exists
+    const agent = await prisma.agent.findUnique({
+      where: { id },
+      select: { id: true, avatarUrl: true },
+    });
+
+    if (!agent) {
+      return NextResponse.json({ error: "הנציג לא נמצא" }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const { avatarUrl } = body;
+
+    if (!avatarUrl || typeof avatarUrl !== "string") {
+      return NextResponse.json({ error: "URL לא תקין" }, { status: 400 });
+    }
+
+    // Delete old avatar from storage if it was uploaded (not a default avatar URL)
+    if (agent.avatarUrl && agent.avatarUrl.includes("supabase")) {
+      const supabase = createServiceClient();
+      const oldPath = agent.avatarUrl.split("/").slice(-2).join("/");
+      await supabase.storage.from("avatars").remove([oldPath]);
+    }
+
+    // Update agent with the new avatar URL
+    const updatedAgent = await prisma.agent.update({
+      where: { id },
+      data: { avatarUrl },
+      select: {
+        id: true,
+        avatarUrl: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      avatarUrl: updatedAgent.avatarUrl,
+    });
+  } catch (error) {
+    console.error("Update avatar error:", error);
+    return NextResponse.json(
+      { error: "שגיאה בעדכון התמונה" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Remove avatar
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
@@ -160,10 +229,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: true });
     }
 
-    // Delete from Supabase Storage
-    const supabase = createServiceClient();
-    const path = agent.avatarUrl.split("/").slice(-2).join("/");
-    await supabase.storage.from("avatars").remove([path]);
+    // Delete from Supabase Storage only if it's our uploaded file
+    if (agent.avatarUrl.includes("supabase")) {
+      const supabase = createServiceClient();
+      const path = agent.avatarUrl.split("/").slice(-2).join("/");
+      await supabase.storage.from("avatars").remove([path]);
+    }
 
     // Update agent in database
     await prisma.agent.update({

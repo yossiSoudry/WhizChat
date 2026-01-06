@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = sendMessageSchema.parse(body);
 
-    const { conversationId, content, clientMessageId, senderName, replyToId, replyToContent, replyToSender } = validatedData;
+    const { conversationId, content, clientMessageId, senderName, replyToId, replyToContent, replyToSender, replyToMessageType, replyToFileUrl } = validatedData;
 
     // Check for duplicate message (idempotency)
     const existingMessage = await prisma.message.findFirst({
@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
         replyToId: replyToId || null,
         replyToContent: replyToContent || null,
         replyToSender: replyToSender || null,
+        replyToMessageType: replyToMessageType || null,
+        replyToFileUrl: replyToFileUrl || null,
       },
       select: {
         id: true,
@@ -81,6 +83,8 @@ export async function POST(request: NextRequest) {
         replyToId: true,
         replyToContent: true,
         replyToSender: true,
+        replyToMessageType: true,
+        replyToFileUrl: true,
       },
     });
 

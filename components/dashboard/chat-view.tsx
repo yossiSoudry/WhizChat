@@ -98,7 +98,9 @@ interface Message {
   id: string;
   content: string;
   senderType: "customer" | "agent" | "system" | "bot";
+  senderId?: string | null;
   senderName: string | null;
+  senderAvatar?: string | null;
   source: "widget" | "dashboard" | "whatsapp";
   createdAt: string;
   status: "sent" | "delivered" | "read";
@@ -113,6 +115,8 @@ interface Message {
   replyToId?: string | null;
   replyToContent?: string | null;
   replyToSender?: string | null;
+  replyToMessageType?: "text" | "image" | "file" | "audio" | "video" | null;
+  replyToFileUrl?: string | null;
 }
 
 interface ConversationDetails {
@@ -590,7 +594,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     const replyData = replyingTo ? {
       replyToId: replyingTo.id,
       replyToContent: replyingTo.content,
-      replyToSender: replyingTo.senderType === "agent" ? (agent?.name || "Agent") : (replyingTo.senderName || "Customer"),
+      replyToSender: replyingTo.senderType === "agent" ? (replyingTo.senderName || agent?.name || "Agent") : (replyingTo.senderName || "Customer"),
+      replyToMessageType: replyingTo.messageType || "text",
+      replyToFileUrl: replyingTo.fileUrl || null,
     } : null;
 
     setIsSending(true);
@@ -608,6 +614,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             replyToId: replyData.replyToId,
             replyToContent: replyData.replyToContent,
             replyToSender: replyData.replyToSender,
+            replyToMessageType: replyData.replyToMessageType,
+            replyToFileUrl: replyData.replyToFileUrl,
           }),
         }),
       });
@@ -1000,12 +1008,17 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                   isSystem && "justify-center"
                 )}
               >
-                {/* Agent avatar */}
+                {/* Agent avatar - use message's senderAvatar, fallback to current agent if same senderId */}
                 {isAgent && showAvatar && (
                   <Avatar className="w-8 h-8 border border-border">
-                    {agent?.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={agent.name} />}
+                    {(message.senderAvatar || (message.senderId === agent?.id && agent?.avatarUrl)) && (
+                      <AvatarImage
+                        src={message.senderAvatar || agent?.avatarUrl || ""}
+                        alt={message.senderName || "Agent"}
+                      />
+                    )}
                     <AvatarFallback className="bg-brand-gradient text-white text-xs">
-                      {agent?.name?.slice(0, 2).toUpperCase() || "W"}
+                      {(message.senderName || "Agent").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 )}
@@ -1064,6 +1077,16 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                                 "w-0.5 rounded-full flex-shrink-0",
                                 isAgent ? "bg-white/50" : "bg-primary"
                               )} />
+                              {/* Image thumbnail for image replies */}
+                              {message.replyToMessageType === "image" && message.replyToFileUrl && (
+                                <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                                  <img
+                                    src={message.replyToFileUrl}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
                               <div className="flex flex-col min-w-0">
                                 <span className={cn(
                                   "font-semibold",
@@ -1075,9 +1098,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                                   "truncate",
                                   isAgent ? "text-white/70" : "text-muted-foreground"
                                 )}>
-                                  {message.replyToContent.length > 50
-                                    ? message.replyToContent.substring(0, 50) + '...'
-                                    : message.replyToContent}
+                                  {message.replyToMessageType === "image" && !message.replyToContent?.trim()
+                                    ? "📷 תמונה"
+                                    : message.replyToContent && message.replyToContent.length > 50
+                                      ? message.replyToContent.substring(0, 50) + '...'
+                                      : message.replyToContent}
                                 </span>
                               </div>
                             </div>
@@ -1223,17 +1248,29 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
             {/* Reply bar */}
             {replyingTo && (
               <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-card border border-border rounded-xl shadow-sm animate-fade-in">
-                <div className="w-1 h-8 bg-primary rounded-full flex-shrink-0" />
+                <div className="w-1 h-10 bg-primary rounded-full flex-shrink-0" />
+                {/* Image thumbnail for image replies */}
+                {replyingTo.messageType === "image" && replyingTo.fileUrl && (
+                  <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                    <img
+                      src={replyingTo.fileUrl}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-primary">
                     {replyingTo.senderType === "agent"
-                      ? (agent?.name || "Agent")
+                      ? (replyingTo.senderName || agent?.name || "Agent")
                       : (replyingTo.senderName || "Customer")}
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
-                    {replyingTo.content.length > 60
-                      ? replyingTo.content.substring(0, 60) + '...'
-                      : replyingTo.content}
+                    {replyingTo.messageType === "image" && !replyingTo.content?.trim()
+                      ? "📷 תמונה"
+                      : replyingTo.content.length > 60
+                        ? replyingTo.content.substring(0, 60) + '...'
+                        : replyingTo.content}
                   </div>
                 </div>
                 <Button

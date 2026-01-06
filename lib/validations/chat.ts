@@ -27,6 +27,8 @@ export const sendMessageSchema = z.object({
   replyToId: z.string().uuid().optional(),
   replyToContent: z.string().max(500).optional(),
   replyToSender: z.string().max(100).optional(),
+  replyToMessageType: z.enum(["text", "image", "file", "audio", "video"]).optional(),
+  replyToFileUrl: z.string().url().optional(),
 });
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;

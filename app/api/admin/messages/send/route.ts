@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const agent = authResult.agent;
 
     const body = await request.json();
-    const { conversationId, content, replyToId, replyToContent, replyToSender } = body;
+    const { conversationId, content, replyToId, replyToContent, replyToSender, replyToMessageType, replyToFileUrl } = body;
 
     if (!conversationId || !content) {
       return NextResponse.json(
@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
         replyToId: replyToId || null,
         replyToContent: replyToContent || null,
         replyToSender: replyToSender || null,
+        replyToMessageType: replyToMessageType || null,
+        replyToFileUrl: replyToFileUrl || null,
       },
       select: {
         id: true,
@@ -67,6 +69,8 @@ export async function POST(request: NextRequest) {
         replyToId: true,
         replyToContent: true,
         replyToSender: true,
+        replyToMessageType: true,
+        replyToFileUrl: true,
       },
     });
 

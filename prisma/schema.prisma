@@ -144,9 +144,11 @@ model Message {
   fileMimeType String? @map("file_mime_type")
 
   // Reply to another message
-  replyToId      String?  @map("reply_to_id")
-  replyToContent String?  @map("reply_to_content")
-  replyToSender  String?  @map("reply_to_sender")
+  replyToId          String?      @map("reply_to_id")
+  replyToContent     String?      @map("reply_to_content")
+  replyToSender      String?      @map("reply_to_sender")
+  replyToMessageType MessageType? @map("reply_to_message_type")
+  replyToFileUrl     String?      @map("reply_to_file_url")
 
   // Sender Info
   senderType   SenderType @map("sender_type")

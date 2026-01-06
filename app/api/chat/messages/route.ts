@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
         id: true,
         content: true,
         senderType: true,
+        senderId: true,
         senderName: true,
         senderAvatar: true,
         source: true,
@@ -75,6 +76,8 @@ export async function GET(request: NextRequest) {
         replyToId: true,
         replyToContent: true,
         replyToSender: true,
+        replyToMessageType: true,
+        replyToFileUrl: true,
       },
     });
 
