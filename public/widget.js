@@ -1076,7 +1076,7 @@
       /* Reply button on messages */
       .whizchat-message-row {
         display: flex;
-        align-items: flex-start;
+        align-items: flex-end;
         gap: 8px;
         width: 100%;
       }
@@ -1106,7 +1106,7 @@
         justify-content: center;
         transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
         flex-shrink: 0;
-        margin-top: 8px;
+        margin-bottom: 18px;
       }
 
       .whizchat-message-row:hover .whizchat-reply-btn {

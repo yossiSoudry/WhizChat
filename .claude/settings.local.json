@@ -30,7 +30,8 @@
       "Bash(npx web-push:*)",
       "Bash(dir:*)",
       "Bash(npx dotenv:*)",
-      "Bash(set:*)"
+      "Bash(set:*)",
+      "Bash(grep:*)"
     ]
   }
 }
