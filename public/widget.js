@@ -1512,6 +1512,63 @@
       .whizchat-widget.theme-dark .whizchat-reply-btn::after {
         background: #374151;
       }
+
+      /* Typing indicator */
+      .whizchat-typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+      }
+
+      .whizchat-typing-dots {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 12px 16px;
+        background: #f3f4f6;
+        border-radius: 16px;
+        border-bottom-left-radius: 4px;
+      }
+
+      .whizchat-typing-dots span {
+        width: 8px;
+        height: 8px;
+        background: #9ca3af;
+        border-radius: 50%;
+        animation: whizchat-typing-bounce 1.4s infinite ease-in-out both;
+      }
+
+      .whizchat-typing-dots span:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+
+      .whizchat-typing-dots span:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+
+      .whizchat-typing-dots span:nth-child(3) {
+        animation-delay: 0s;
+      }
+
+      @keyframes whizchat-typing-bounce {
+        0%, 80%, 100% {
+          transform: scale(0.6);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .whizchat-widget.theme-dark .whizchat-typing-dots {
+        background: #374151;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-typing-dots span {
+        background: #6b7280;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -2104,6 +2161,12 @@
   function sendMessage(content) {
     if (!content.trim() || !state.conversationId || state.isSending) return;
 
+    // Clear typing status when sending message
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    sendTypingStatus(false);
+
     var clientMessageId = generateId();
     var tempMessage = {
       id: clientMessageId,
@@ -2309,6 +2372,27 @@
       }
     };
 
+    // Typing indicator - send typing status when user types
+    document.getElementById('whizchat-input').oninput = function() {
+      if (this.value.length > 0) {
+        sendTypingStatus(true);
+        // Clear existing timeout
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
+        // Stop typing after 3 seconds of inactivity
+        typingTimeout = setTimeout(function() {
+          sendTypingStatus(false);
+        }, 3000);
+      } else {
+        // Input is empty, stop typing
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
+        sendTypingStatus(false);
+      }
+    };
+
     // Reply close button
     document.getElementById('whizchat-reply-close').onclick = cancelReply;
 
@@ -2470,6 +2554,12 @@
             var latestMsg = newAgentMessages[newAgentMessages.length - 1];
             state.lastMessageId = latestMsg.id;
 
+            // Clear typing indicator when agent sends a message
+            if (agentIsTyping) {
+              agentIsTyping = false;
+              renderTypingIndicator();
+            }
+
             // Play sound
             playNotificationSound();
 
@@ -2508,11 +2598,19 @@
 
   // Start polling
   function startPolling() {
+    // Poll for messages
     setInterval(function() {
       if (state.conversationId) {
         pollMessages();
       }
     }, state.isOpen ? 3000 : 10000);
+
+    // Poll for typing status (more frequently when widget is open)
+    setInterval(function() {
+      if (state.conversationId && state.isOpen) {
+        pollTypingStatus();
+      }
+    }, 2000);
   }
 
   // Track if leave notification was already sent

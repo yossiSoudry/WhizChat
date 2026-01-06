@@ -1,5 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export async function OPTIONS() {
+  return handleOptions();
+}
 
 // GET - Check if other party is typing
 export async function GET(request: NextRequest) {
@@ -9,7 +14,7 @@ export async function GET(request: NextRequest) {
     const userType = searchParams.get("userType") || "customer";
 
     if (!conversationId) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "conversationId is required" },
         { status: 400 }
       );
@@ -30,12 +35,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return corsResponse({
       isTyping: !!typingIndicator,
     });
   } catch (error) {
     console.error("Get typing status error:", error);
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to get typing status" },
       { status: 500 }
     );
@@ -49,7 +54,7 @@ export async function POST(request: NextRequest) {
     const { conversationId, isTyping, userType = "customer", userId = "anonymous" } = body;
 
     if (!conversationId) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "conversationId is required" },
         { status: 400 }
       );
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!conversation) {
-      return NextResponse.json(
+      return corsResponse(
         { error: "Conversation not found" },
         { status: 404 }
       );
@@ -87,10 +92,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    return corsResponse({ success: true });
   } catch (error) {
     console.error("Typing indicator error:", error);
-    return NextResponse.json(
+    return corsResponse(
       { error: "Failed to update typing status" },
       { status: 500 }
     );
