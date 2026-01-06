@@ -508,6 +508,42 @@
         align-items: center;
       }
 
+      /* Agent info (avatar + name) above message */
+      .whizchat-agent-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+        padding-left: 4px;
+      }
+
+      .whizchat-agent-avatar {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+      }
+
+      .whizchat-agent-avatar-fallback {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .whizchat-agent-name {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6b7280;
+      }
+
       .whizchat-message-meta {
         display: flex;
         align-items: center;
@@ -1292,6 +1328,10 @@
         color: #6b7280;
       }
 
+      .whizchat-widget.theme-dark .whizchat-agent-name {
+        color: #9ca3af;
+      }
+
       .whizchat-widget.theme-dark .whizchat-faq {
         background: #1f2937;
         border-color: #374151;
@@ -1576,6 +1616,42 @@
       var wrapper = document.createElement('div');
       wrapper.className = 'whizchat-message-wrapper ' + msg.senderType;
       wrapper.setAttribute('data-msg-index', index);
+
+      // Add agent info (avatar + name) for agent/bot messages
+      if (msg.senderType === 'agent' || msg.senderType === 'bot') {
+        var agentInfo = document.createElement('div');
+        agentInfo.className = 'whizchat-agent-info';
+
+        // Avatar
+        if (msg.senderAvatar) {
+          var avatar = document.createElement('img');
+          avatar.className = 'whizchat-agent-avatar';
+          avatar.src = msg.senderAvatar;
+          avatar.alt = msg.senderName || t('agent');
+          avatar.onerror = function() {
+            // If image fails to load, replace with fallback
+            var fallback = document.createElement('div');
+            fallback.className = 'whizchat-agent-avatar-fallback';
+            fallback.textContent = (msg.senderName || t('agent')).charAt(0).toUpperCase();
+            this.parentNode.replaceChild(fallback, this);
+          };
+          agentInfo.appendChild(avatar);
+        } else {
+          // Fallback avatar with initial
+          var avatarFallback = document.createElement('div');
+          avatarFallback.className = 'whizchat-agent-avatar-fallback';
+          avatarFallback.textContent = (msg.senderName || t('agent')).charAt(0).toUpperCase();
+          agentInfo.appendChild(avatarFallback);
+        }
+
+        // Name
+        var agentName = document.createElement('span');
+        agentName.className = 'whizchat-agent-name';
+        agentName.textContent = msg.senderName || t('agent');
+        agentInfo.appendChild(agentName);
+
+        wrapper.appendChild(agentInfo);
+      }
 
       // Create message bubble
       var bubble = document.createElement('div');

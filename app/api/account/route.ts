@@ -7,6 +7,7 @@ const phoneRegex = /^\+?[0-9]{9,15}$/;
 
 const updateProfileSchema = z.object({
   name: z.string().min(2, "שם חייב להכיל לפחות 2 תווים"),
+  penName: z.string().max(50, "שם עט יכול להכיל עד 50 תווים").optional().or(z.literal("")),
   phone: z.string().regex(phoneRegex, "מספר טלפון לא תקין").optional().or(z.literal("")),
   receiveWhatsappNotifications: z.boolean().optional(),
 });
@@ -28,6 +29,7 @@ export async function GET() {
         id: true,
         email: true,
         name: true,
+        penName: true,
         role: true,
         phone: true,
         avatarUrl: true,
@@ -72,7 +74,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { name, phone, receiveWhatsappNotifications } = validation.data;
+    const { name, penName, phone, receiveWhatsappNotifications } = validation.data;
 
     // If trying to enable notifications but no phone number
     if (receiveWhatsappNotifications && !phone) {
@@ -86,6 +88,7 @@ export async function PUT(request: NextRequest) {
       where: { id: authResult.agent.id },
       data: {
         name,
+        penName: penName || null,
         phone: phone || null,
         receiveWhatsappNotifications: receiveWhatsappNotifications ?? false,
       },
@@ -93,6 +96,7 @@ export async function PUT(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        penName: true,
         role: true,
         phone: true,
         avatarUrl: true,

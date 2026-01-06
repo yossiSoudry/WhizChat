@@ -8,6 +8,7 @@ export type AuthenticatedAgent = {
   authUserId: string;
   email: string;
   name: string;
+  penName: string | null;
   avatarUrl: string | null;
   role: AgentRole;
   isActive: boolean;
@@ -50,6 +51,7 @@ export async function getAuthenticatedAgent(): Promise<AuthResult> {
         authUserId: true,
         email: true,
         name: true,
+        penName: true,
         avatarUrl: true,
         role: true,
         isActive: true,

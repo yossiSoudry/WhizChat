@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
         content: true,
         senderType: true,
         senderName: true,
+        senderAvatar: true,
         source: true,
         createdAt: true,
         status: true,

@@ -17,6 +17,7 @@ export interface Agent {
   authUserId: string;
   email: string;
   name: string;
+  penName: string | null;
   avatarUrl: string | null;
   role: AgentRole;
   isActive: boolean;

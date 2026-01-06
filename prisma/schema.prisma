@@ -149,9 +149,10 @@ model Message {
   replyToSender  String?  @map("reply_to_sender")
 
   // Sender Info
-  senderType SenderType    @map("sender_type")
-  senderId   String?       @map("sender_id")
-  senderName String?       @map("sender_name")
+  senderType   SenderType @map("sender_type")
+  senderId     String?    @map("sender_id")
+  senderName   String?    @map("sender_name")
+  senderAvatar String?    @map("sender_avatar") // Agent avatar URL for display
 
   // Source
   source MessageSource
@@ -186,6 +187,7 @@ model Agent {
   // Profile
   email     String  @unique
   name      String
+  penName   String? @map("pen_name") // Display name shown to customers
   avatarUrl String? @map("avatar_url")
   phone     String? @map("phone")
 

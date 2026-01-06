@@ -28,6 +28,7 @@ export default function AccountPage() {
 
   const [formData, setFormData] = useState({
     name: "",
+    penName: "",
     phone: "",
     receiveWhatsappNotifications: false,
   });
@@ -42,6 +43,7 @@ export default function AccountPage() {
     if (agent) {
       setFormData({
         name: agent.name || "",
+        penName: agent.penName || "",
         phone: agent.phone || "",
         receiveWhatsappNotifications: agent.receiveWhatsappNotifications || false,
       });
@@ -204,6 +206,22 @@ export default function AccountPage() {
                     }
                     placeholder="השם שלך"
                   />
+                </div>
+
+                {/* Pen Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="penName">שם תצוגה (שם עט)</Label>
+                  <Input
+                    id="penName"
+                    value={formData.penName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, penName: e.target.value })
+                    }
+                    placeholder="השם שיוצג ללקוחות"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    השם הזה יוצג ללקוחות בווידג'ט במקום השם האמיתי שלך
+                  </p>
                 </div>
 
                 {/* Email (read-only) */}

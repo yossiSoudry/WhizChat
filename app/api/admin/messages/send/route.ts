@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Use penName if available, otherwise use real name
+    const displayName = agent.penName || agent.name;
+
     // Create message with explicit status
     const message = await prisma.message.create({
       data: {
@@ -44,7 +47,8 @@ export async function POST(request: NextRequest) {
         content,
         senderType: "agent",
         senderId: agent.id,
-        senderName: agent.name,
+        senderName: displayName,
+        senderAvatar: agent.avatarUrl,
         source: "dashboard",
         status: "sent",
         replyToId: replyToId || null,
@@ -56,6 +60,7 @@ export async function POST(request: NextRequest) {
         content: true,
         senderType: true,
         senderName: true,
+        senderAvatar: true,
         source: true,
         createdAt: true,
         status: true,
