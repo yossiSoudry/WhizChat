@@ -876,6 +876,14 @@
         display: block;
       }
 
+      .whizchat-image-caption {
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.4;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+      }
+
       .whizchat-header-actions {
         display: flex;
         align-items: center;
@@ -1676,6 +1684,11 @@
       // Check if message has file
       if (msg.messageType === 'image' && msg.fileUrl) {
         content += '<a href="' + msg.fileUrl + '" target="_blank" class="whizchat-image-message"><img src="' + msg.fileUrl + '" alt="' + escapeHtml(msg.fileName || 'Image') + '" /></a>';
+        // Add caption if exists and is different from filename
+        var hasCaption = msg.content && msg.content !== msg.fileName && msg.content.trim();
+        if (hasCaption) {
+          content += '<div class="whizchat-image-caption">' + escapeHtml(msg.content) + '</div>';
+        }
       } else if (msg.messageType && msg.messageType !== 'text' && msg.fileUrl) {
         content += '<a href="' + msg.fileUrl + '" target="_blank" download class="whizchat-file-message">' +
           '<div class="whizchat-file-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
@@ -2126,6 +2139,22 @@
     document.getElementById('whizchat-file-input').value = '';
   }
 
+  // Mark messages as read by customer
+  function markMessagesAsRead() {
+    if (!state.conversationId) return;
+
+    fetch(API_BASE_URL + '/api/chat/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: state.conversationId,
+        readerType: 'customer'
+      })
+    }).catch(function(error) {
+      // Silent fail
+    });
+  }
+
   // Toggle window
   function toggleWindow() {
     state.isOpen = !state.isOpen;
@@ -2145,6 +2174,9 @@
 
       if (!state.conversationId) {
         initChat();
+      } else {
+        // Mark agent messages as read when widget is opened
+        markMessagesAsRead();
       }
     } else {
       window.classList.remove('open');
@@ -2288,6 +2320,10 @@
 
           if (state.isOpen) {
             renderMessages();
+            // Mark agent messages as read if widget is open and visible
+            if (newAgentMessages.length > 0 && document.visibilityState === 'visible') {
+              markMessagesAsRead();
+            }
           }
         }
       })

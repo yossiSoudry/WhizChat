@@ -79,13 +79,13 @@ export async function GET(request: NextRequest) {
     });
 
     const hasMore = messages.length > limit;
-    const returnMessages = hasMore ? messages.slice(0, -1) : messages;
+    let returnMessages = hasMore ? messages.slice(0, -1) : messages;
 
     // Update message status (non-blocking - don't fail if this errors)
     try {
       if (viewerType === "customer") {
         // Mark agent messages as "delivered" when customer views
-        await prisma.message.updateMany({
+        const updateResult = await prisma.message.updateMany({
           where: {
             conversationId,
             senderType: "agent",
@@ -95,9 +95,18 @@ export async function GET(request: NextRequest) {
             status: "delivered",
           },
         });
+
+        // Update the returned messages to reflect the new status
+        if (updateResult.count > 0) {
+          returnMessages = returnMessages.map(msg =>
+            msg.senderType === "agent" && msg.status === "sent"
+              ? { ...msg, status: "delivered" as const }
+              : msg
+          );
+        }
       } else if (viewerType === "agent") {
         // Mark customer messages as "delivered" when agent views
-        await prisma.message.updateMany({
+        const updateResult = await prisma.message.updateMany({
           where: {
             conversationId,
             senderType: "customer",
@@ -107,6 +116,15 @@ export async function GET(request: NextRequest) {
             status: "delivered",
           },
         });
+
+        // Update the returned messages to reflect the new status
+        if (updateResult.count > 0) {
+          returnMessages = returnMessages.map(msg =>
+            msg.senderType === "customer" && msg.status === "sent"
+              ? { ...msg, status: "delivered" as const }
+              : msg
+          );
+        }
       }
     } catch (statusError) {
       // Log but don't fail the request - message retrieval is more important
