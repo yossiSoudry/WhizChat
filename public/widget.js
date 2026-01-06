@@ -1074,36 +1074,35 @@
       /* Reply button on messages */
       .whizchat-message-wrapper {
         position: relative;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .whizchat-message-wrapper.customer {
+        flex-direction: row-reverse;
       }
 
       .whizchat-reply-btn {
-        display: none;
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
+        opacity: 0;
         width: 28px;
         height: 28px;
+        min-width: 28px;
         border: none;
         background: white;
         border-radius: 50%;
         cursor: pointer;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         color: #6b7280;
+        display: flex;
         align-items: center;
         justify-content: center;
-      }
-
-      .whizchat-message-wrapper.customer .whizchat-reply-btn {
-        left: -36px;
-      }
-
-      .whizchat-message-wrapper.agent .whizchat-reply-btn,
-      .whizchat-message-wrapper.bot .whizchat-reply-btn {
-        right: -36px;
+        transition: opacity 0.2s ease;
+        flex-shrink: 0;
       }
 
       .whizchat-message-wrapper:hover .whizchat-reply-btn {
-        display: flex;
+        opacity: 1;
       }
 
       .whizchat-reply-btn:hover {
@@ -1114,6 +1113,7 @@
       .whizchat-reply-btn svg {
         width: 14px;
         height: 14px;
+        pointer-events: none;
       }
 
       /* Reply preview in message bubble */
@@ -1210,17 +1210,6 @@
       .whizchat-widget.lang-rtl .whizchat-message-wrapper.bot {
         align-self: flex-end;
         align-items: flex-end;
-      }
-
-      .whizchat-widget.lang-rtl .whizchat-message-wrapper.customer .whizchat-reply-btn {
-        left: auto;
-        right: -36px;
-      }
-
-      .whizchat-widget.lang-rtl .whizchat-message-wrapper.agent .whizchat-reply-btn,
-      .whizchat-widget.lang-rtl .whizchat-message-wrapper.bot .whizchat-reply-btn {
-        right: auto;
-        left: -36px;
       }
 
       .whizchat-widget.lang-rtl .whizchat-input {

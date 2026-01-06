@@ -1129,17 +1129,17 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                       {!isSystem && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover/msg:opacity-100 transition-opacity"
-                              onClick={() => {
+                            <button
+                              type="button"
+                              className="h-7 w-7 rounded-md flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity duration-200 hover:bg-muted text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setReplyingTo(message);
                                 inputRef.current?.focus();
                               }}
                             >
                               <Reply className="w-4 h-4" />
-                            </Button>
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent side={isAgent ? "right" : "left"}>
                             הגב להודעה
