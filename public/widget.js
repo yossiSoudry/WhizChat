@@ -86,7 +86,8 @@
       today: 'Today',
       yesterday: 'Yesterday',
       you: 'You',
-      agent: 'Agent'
+      agent: 'Agent',
+      replyToMessage: 'Reply'
     },
     he: {
       title: 'צ\'אט תמיכה',
@@ -102,7 +103,8 @@
       today: 'היום',
       yesterday: 'אתמול',
       you: 'את/ה',
-      agent: 'נציג'
+      agent: 'נציג',
+      replyToMessage: 'הגב להודעה'
     }
   };
 
@@ -1072,48 +1074,90 @@
       }
 
       /* Reply button on messages */
-      .whizchat-message-wrapper {
-        position: relative;
+      .whizchat-message-row {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
+        width: 100%;
       }
 
-      .whizchat-message-wrapper.customer {
-        flex-direction: row-reverse;
+      .whizchat-message-row.customer {
+        justify-content: flex-end;
+      }
+
+      .whizchat-message-row.agent,
+      .whizchat-message-row.bot {
+        justify-content: flex-start;
       }
 
       .whizchat-reply-btn {
+        position: relative;
         opacity: 0;
         width: 28px;
         height: 28px;
         min-width: 28px;
         border: none;
-        background: white;
-        border-radius: 50%;
+        background: transparent;
+        border-radius: 6px;
         cursor: pointer;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         color: #6b7280;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.2s ease;
+        transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
         flex-shrink: 0;
+        margin-top: 8px;
       }
 
-      .whizchat-message-wrapper:hover .whizchat-reply-btn {
+      .whizchat-message-row:hover .whizchat-reply-btn {
         opacity: 1;
       }
 
       .whizchat-reply-btn:hover {
         background: #f3f4f6;
-        color: var(--widget-primary);
+        color: #374151;
       }
 
       .whizchat-reply-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         pointer-events: none;
+      }
+
+      /* Tooltip for reply button */
+      .whizchat-reply-btn::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 8px;
+        background: #1f2937;
+        color: white;
+        font-size: 12px;
+        border-radius: 4px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
+        margin-bottom: 4px;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .whizchat-reply-btn:hover::after {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      /* RTL support for reply button */
+      .whizchat-widget.lang-rtl .whizchat-message-row.customer {
+        justify-content: flex-start;
+      }
+
+      .whizchat-widget.lang-rtl .whizchat-message-row.agent,
+      .whizchat-widget.lang-rtl .whizchat-message-row.bot {
+        justify-content: flex-end;
       }
 
       /* Reply preview in message bubble */
@@ -1359,13 +1403,17 @@
       }
 
       .whizchat-widget.theme-dark .whizchat-reply-btn {
-        background: #374151;
+        background: transparent;
         color: #9ca3af;
       }
 
       .whizchat-widget.theme-dark .whizchat-reply-btn:hover {
         background: #4b5563;
-        color: var(--widget-primary);
+        color: #e5e7eb;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-reply-btn::after {
+        background: #374151;
       }
     `;
     document.head.appendChild(style);
@@ -1512,6 +1560,18 @@
         lastDate = msg.createdAt;
       }
 
+      // Create outer row for message + reply button
+      var row = document.createElement('div');
+      row.className = 'whizchat-message-row ' + msg.senderType;
+
+      // Create reply button (placed before or after wrapper based on sender)
+      var replyBtn = document.createElement('button');
+      replyBtn.className = 'whizchat-reply-btn';
+      replyBtn.setAttribute('data-msg-index', index);
+      replyBtn.setAttribute('data-tooltip', t('replyToMessage'));
+      // Reply icon matching dashboard style
+      replyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>';
+
       // Create wrapper div
       var wrapper = document.createElement('div');
       wrapper.className = 'whizchat-message-wrapper ' + msg.senderType;
@@ -1552,13 +1612,6 @@
       bubble.innerHTML = content;
       wrapper.appendChild(bubble);
 
-      // Add reply button
-      var replyBtn = document.createElement('button');
-      replyBtn.className = 'whizchat-reply-btn';
-      replyBtn.setAttribute('data-msg-index', index);
-      replyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H4V12L12 4L20 12V17H15"/><path d="M9 17V21L15 17"/></svg>';
-      wrapper.appendChild(replyBtn);
-
       // Create meta line (time + status) - outside the bubble
       var meta = document.createElement('div');
       meta.className = 'whizchat-message-meta';
@@ -1573,7 +1626,19 @@
       meta.innerHTML = metaContent;
       wrapper.appendChild(meta);
 
-      container.appendChild(wrapper);
+      // For customer messages: button on left, wrapper on right
+      // For agent/bot messages: wrapper on left, button on right
+      if (msg.senderType === 'customer') {
+        row.appendChild(replyBtn);
+        row.appendChild(wrapper);
+      } else if (msg.senderType !== 'system') {
+        row.appendChild(wrapper);
+        row.appendChild(replyBtn);
+      } else {
+        row.appendChild(wrapper);
+      }
+
+      container.appendChild(row);
     });
 
     // Scroll to bottom
