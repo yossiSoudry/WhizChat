@@ -508,40 +508,42 @@
         align-items: center;
       }
 
-      /* Agent info (avatar + name) above message */
-      .whizchat-agent-info {
+      /* Agent avatar container (on side of message) */
+      .whizchat-agent-avatar-container {
         display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 4px;
-        padding-left: 4px;
+        align-items: flex-end;
+        flex-shrink: 0;
+        margin-bottom: 18px;
       }
 
       .whizchat-agent-avatar {
-        width: 22px;
-        height: 22px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         object-fit: cover;
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
       }
 
       .whizchat-agent-avatar-fallback {
-        width: 22px;
-        height: 22px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 600;
         color: white;
       }
 
-      .whizchat-agent-name {
+      /* Agent name header (above first message in sequence) */
+      .whizchat-agent-name-header {
         font-size: 12px;
         font-weight: 500;
         color: #6b7280;
+        margin-bottom: 2px;
+        padding-left: 2px;
       }
 
       .whizchat-message-meta {
@@ -1194,6 +1196,23 @@
         visibility: visible;
       }
 
+      /* Mobile: always show reply button (no hover on touch devices) */
+      @media (hover: none) and (pointer: coarse) {
+        .whizchat-reply-btn {
+          opacity: 0.6;
+        }
+
+        .whizchat-reply-btn:active {
+          opacity: 1;
+          background: #f3f4f6;
+        }
+
+        /* Hide tooltip on mobile */
+        .whizchat-reply-btn::after {
+          display: none;
+        }
+      }
+
       /* RTL support for reply button */
       .whizchat-widget.lang-rtl .whizchat-message-row.customer {
         justify-content: flex-start;
@@ -1336,7 +1355,7 @@
         color: #6b7280;
       }
 
-      .whizchat-widget.theme-dark .whizchat-agent-name {
+      .whizchat-widget.theme-dark .whizchat-agent-name-header {
         color: #9ca3af;
       }
 
@@ -1612,6 +1631,11 @@
       var row = document.createElement('div');
       row.className = 'whizchat-message-row ' + msg.senderType;
 
+      // Check if this is the first message in a sequence from the same sender
+      var prevMsg = index > 0 ? messages[index - 1] : null;
+      var isFirstInSequence = !prevMsg || prevMsg.senderType !== msg.senderType || prevMsg.senderName !== msg.senderName;
+      var isAgentOrBot = msg.senderType === 'agent' || msg.senderType === 'bot';
+
       // Create reply button (placed before or after wrapper based on sender)
       var replyBtn = document.createElement('button');
       replyBtn.className = 'whizchat-reply-btn';
@@ -1625,40 +1649,46 @@
       wrapper.className = 'whizchat-message-wrapper ' + msg.senderType;
       wrapper.setAttribute('data-msg-index', index);
 
-      // Add agent info (avatar + name) for agent/bot messages
-      if (msg.senderType === 'agent' || msg.senderType === 'bot') {
-        var agentInfo = document.createElement('div');
-        agentInfo.className = 'whizchat-agent-info';
+      // For agent messages: add avatar on the side
+      var avatarElement = null;
+      if (isAgentOrBot) {
+        // Create avatar element (shown on side of message)
+        avatarElement = document.createElement('div');
+        avatarElement.className = 'whizchat-agent-avatar-container';
 
-        // Avatar
         if (msg.senderAvatar) {
           var avatar = document.createElement('img');
           avatar.className = 'whizchat-agent-avatar';
           avatar.src = msg.senderAvatar;
           avatar.alt = msg.senderName || t('agent');
           avatar.onerror = function() {
-            // If image fails to load, replace with fallback
             var fallback = document.createElement('div');
             fallback.className = 'whizchat-agent-avatar-fallback';
             fallback.textContent = (msg.senderName || t('agent')).charAt(0).toUpperCase();
             this.parentNode.replaceChild(fallback, this);
           };
-          agentInfo.appendChild(avatar);
+          avatarElement.appendChild(avatar);
         } else {
-          // Fallback avatar with initial
           var avatarFallback = document.createElement('div');
           avatarFallback.className = 'whizchat-agent-avatar-fallback';
           avatarFallback.textContent = (msg.senderName || t('agent')).charAt(0).toUpperCase();
-          agentInfo.appendChild(avatarFallback);
+          avatarElement.appendChild(avatarFallback);
         }
 
-        // Name
-        var agentName = document.createElement('span');
-        agentName.className = 'whizchat-agent-name';
-        agentName.textContent = msg.senderName || t('agent');
-        agentInfo.appendChild(agentName);
+        // Only show avatar on last message of sequence (or hide for middle messages)
+        var nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
+        var isLastInSequence = !nextMsg || nextMsg.senderType !== msg.senderType || nextMsg.senderName !== msg.senderName;
+        if (!isLastInSequence) {
+          avatarElement.style.visibility = 'hidden';
+        }
 
-        wrapper.appendChild(agentInfo);
+        // Add agent name above first message in sequence only
+        if (isFirstInSequence) {
+          var agentNameHeader = document.createElement('div');
+          agentNameHeader.className = 'whizchat-agent-name-header';
+          agentNameHeader.textContent = msg.senderName || t('agent');
+          wrapper.appendChild(agentNameHeader);
+        }
       }
 
       // Create message bubble
@@ -1716,10 +1746,14 @@
       wrapper.appendChild(meta);
 
       // For customer messages: button on left, wrapper on right
-      // For agent/bot messages: wrapper on left, button on right
+      // For agent/bot messages: avatar on left, wrapper in middle, button on right
       if (msg.senderType === 'customer') {
         row.appendChild(replyBtn);
         row.appendChild(wrapper);
+      } else if (isAgentOrBot) {
+        row.appendChild(avatarElement);
+        row.appendChild(wrapper);
+        row.appendChild(replyBtn);
       } else if (msg.senderType !== 'system') {
         row.appendChild(wrapper);
         row.appendChild(replyBtn);

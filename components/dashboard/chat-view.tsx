@@ -389,14 +389,14 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     return () => clearInterval(interval);
   }, [isLoading, conversationId, fetchNewMessages]);
 
-  // Single polling interval for typing, presence, and status sync (3 seconds)
+  // Single polling interval for typing, presence, and status sync (2 seconds for faster read receipts)
   useEffect(() => {
     if (isLoading || !conversationId) return;
 
     // Check immediately
     pollChatStatus();
 
-    const interval = setInterval(pollChatStatus, 3000);
+    const interval = setInterval(pollChatStatus, 2000);
     return () => clearInterval(interval);
   }, [isLoading, conversationId, pollChatStatus]);
 
