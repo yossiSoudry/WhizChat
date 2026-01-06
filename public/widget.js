@@ -1649,6 +1649,11 @@
     // Messages with date separators
     var lastDate = null;
     state.messages.forEach(function(msg, index) {
+      // Skip leave notifications in widget (only shown to agents)
+      if (msg.senderType === 'system' && msg.content && msg.content.indexOf('עזב/ה את הצ\'אט') !== -1) {
+        return;
+      }
+
       // Check if we need a date separator
       if (!lastDate || !isSameDay(lastDate, msg.createdAt)) {
         var separator = document.createElement('div');
@@ -2379,6 +2384,72 @@
     });
   }
 
+  // Typing indicator state
+  var agentIsTyping = false;
+  var typingTimeout = null;
+  var lastTypingSent = 0;
+
+  // Send typing status to server
+  function sendTypingStatus(isTyping) {
+    if (!state.conversationId) return;
+
+    // Throttle typing updates to every 2 seconds
+    var now = Date.now();
+    if (isTyping && now - lastTypingSent < 2000) return;
+    lastTypingSent = now;
+
+    fetch(API_BASE_URL + '/api/chat/typing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: state.conversationId,
+        isTyping: isTyping,
+        userType: 'customer',
+        userId: 'customer-' + state.conversationId
+      })
+    }).catch(function() {
+      // Silent fail
+    });
+  }
+
+  // Poll for agent typing status
+  function pollTypingStatus() {
+    if (!state.conversationId || !state.isOpen) return;
+
+    fetch(API_BASE_URL + '/api/chat/typing?conversationId=' + state.conversationId + '&userType=customer')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.isTyping !== agentIsTyping) {
+          agentIsTyping = data.isTyping;
+          renderTypingIndicator();
+        }
+      })
+      .catch(function() {
+        // Silent fail
+      });
+  }
+
+  // Render typing indicator
+  function renderTypingIndicator() {
+    var container = document.getElementById('whizchat-messages');
+    if (!container) return;
+
+    // Remove existing typing indicator
+    var existing = document.getElementById('whizchat-typing-indicator');
+    if (existing) {
+      existing.remove();
+    }
+
+    if (agentIsTyping) {
+      var indicator = document.createElement('div');
+      indicator.id = 'whizchat-typing-indicator';
+      indicator.className = 'whizchat-message-row agent';
+      indicator.innerHTML = '<div class="whizchat-typing-dots"><span></span><span></span><span></span></div>';
+      container.appendChild(indicator);
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
   // Poll for new messages (with notifications)
   function pollMessages() {
     if (!state.conversationId) return;
@@ -2444,9 +2515,14 @@
     }, state.isOpen ? 3000 : 10000);
   }
 
+  // Track if leave notification was already sent
+  var leaveNotificationSent = false;
+
   // Send leave notification when user leaves the page
   function sendLeaveNotification() {
-    if (!state.conversationId) return;
+    // Prevent duplicate notifications
+    if (!state.conversationId || leaveNotificationSent) return;
+    leaveNotificationSent = true;
 
     // Use sendBeacon for reliable delivery during page unload
     var data = JSON.stringify({ conversationId: state.conversationId });
