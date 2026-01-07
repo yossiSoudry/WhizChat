@@ -120,69 +120,78 @@ function UserNav() {
               <SidebarMenuButton
                 size="lg"
                 tooltip={showTooltip}
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-xl hover:bg-muted/80 transition-all duration-200 group/user"
               >
-                <Avatar className="size-8 border-2 border-sidebar-border">
+                <Avatar className="size-9 ring-2 ring-offset-2 ring-offset-background ring-primary/20 group-hover/user:ring-primary/40 transition-all duration-200">
                   {agent?.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={displayName} />}
-                  <AvatarFallback className="bg-brand-gradient text-white text-xs font-medium">
+                  <AvatarFallback className="bg-brand-gradient text-white text-xs font-bold">
                     {initials.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-right text-sm leading-tight">
                   <span className="truncate font-semibold">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
-                    <span className="relative flex size-2">
+                    <span className="relative flex size-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full size-2 bg-emerald-500" />
+                      <span className="relative inline-flex rounded-full size-2.5 bg-emerald-500 shadow-sm shadow-emerald-500/50" />
                     </span>
                     {roleLabel}
                   </span>
                 </div>
-                <ChevronUpDown className="mr-auto size-4" />
+                <ChevronUpDown className="mr-auto size-4 text-muted-foreground" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
           </AnimateIcon>
           <DropdownMenuContent
             side="top"
             align="start"
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl shadow-lg"
           >
-            <div className="px-2 py-1.5 text-sm text-muted-foreground border-b mb-1">
-              {agent?.email}
+            <div className="px-3 py-2.5 text-sm border-b mb-1 bg-gradient-to-l from-muted/50 to-transparent rounded-t-xl">
+              <p className="font-medium text-foreground">{displayName}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">{agent?.email}</p>
             </div>
-            <DropdownMenuItem onClick={() => router.push("/account")}>
-              <Settings className="ml-2 size-4" />
+            <DropdownMenuItem onClick={() => router.push("/account")} className="gap-2 py-2 cursor-pointer">
+              <div className="p-1.5 rounded-md bg-muted">
+                <Settings className="size-3.5" />
+              </div>
               הגדרות חשבון
             </DropdownMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <DropdownMenuItem>
-                  <ThemeIcon className="ml-2 size-4" />
+                <DropdownMenuItem className="gap-2 py-2 cursor-pointer">
+                  <div className="p-1.5 rounded-md bg-muted">
+                    <ThemeIcon className="size-3.5" />
+                  </div>
                   ערכת נושא
                 </DropdownMenuItem>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="left" align="start" className="w-40">
-                <DropdownMenuItem onClick={() => setTheme("light")}>
-                  <Sun className="ml-2 size-4" />
+              <DropdownMenuContent side="left" align="start" className="w-40 rounded-xl">
+                <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2 cursor-pointer">
+                  <Sun className="size-4 text-amber-500" />
                   בהיר
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")}>
-                  <Moon className="ml-2 size-4" />
+                <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2 cursor-pointer">
+                  <Moon className="size-4 text-indigo-400" />
                   כהה
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")}>
-                  <Monitor className="ml-2 size-4" />
+                <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2 cursor-pointer">
+                  <Monitor className="size-4 text-muted-foreground" />
                   מערכת
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => logout()}
-            >
-              <LogOut className="ml-2 size-4" />
-              התנתק
-            </DropdownMenuItem>
+            <div className="border-t mt-1 pt-1">
+              <DropdownMenuItem
+                className="gap-2 py-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                onClick={() => logout()}
+              >
+                <div className="p-1.5 rounded-md bg-destructive/10">
+                  <LogOut className="size-3.5" />
+                </div>
+                התנתק
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
@@ -196,6 +205,11 @@ export function AppSidebar() {
   const { isAdmin } = useAgent();
   const isCollapsed = state === "collapsed";
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close sidebar on mobile when clicking a link
   const handleLinkClick = useCallback(() => {
@@ -224,26 +238,26 @@ export function AppSidebar() {
   }, [fetchUnreadCount]);
 
   return (
-    <Sidebar side="right" collapsible="icon">
+    <Sidebar side="right" collapsible="icon" className="border-l-0">
       {/* Header with Logo - same height as main navbar (h-14 = 56px) */}
-      <SidebarHeader className="h-14 flex items-center p-2">
+      <SidebarHeader className="h-14 flex items-center p-2 border-b border-sidebar-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               asChild
               tooltip={isCollapsed ? "WhizChat" : undefined}
-              className="h-10"
+              className="h-10 group/logo"
             >
               <Link href="/" onClick={handleLinkClick}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-brand-gradient text-white shadow-sm">
+                <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-md shadow-primary/25 group-hover/logo:shadow-lg group-hover/logo:shadow-primary/30 group-hover/logo:scale-105 transition-all duration-300">
                   <MessageCircle className="size-4" />
                 </div>
                 <div className="grid flex-1 text-right text-sm leading-tight">
-                  <span className="truncate font-semibold text-brand-gradient">
+                  <span className="truncate font-bold text-brand-gradient text-base">
                     WhizChat
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-[11px] text-muted-foreground">
                     מערכת צ'אט חכמה
                   </span>
                 </div>
@@ -254,12 +268,12 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* Main Content */}
-      <SidebarContent>
+      <SidebarContent className="py-2">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>ניווט ראשי</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3">ניווט ראשי</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1 px-2">
               {navigation
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => {
@@ -275,19 +289,20 @@ export function AppSidebar() {
                         asChild
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
+                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : "hover:bg-muted/80"}`}
                       >
-                        <Link href={item.href} className="flex items-center gap-2 w-full" onClick={handleLinkClick}>
-                          <div className="relative shrink-0">
-                            <item.icon className="size-4" />
+                        <Link href={item.href} className="flex items-center gap-2.5 w-full relative" onClick={handleLinkClick}>
+                          <div className={`relative shrink-0 p-1.5 rounded-md transition-colors ${isActive ? "bg-primary/10" : ""}`}>
+                            <item.icon className={`size-4 ${isActive ? "text-primary" : ""}`} />
                             {showBadge && isCollapsed && (
-                              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-[10px] font-medium shadow-sm">
+                              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[10px] font-bold shadow-md shadow-primary/30 animate-pulse">
                                 {unreadCount > 99 ? "99+" : unreadCount}
                               </span>
                             )}
                           </div>
-                          <span>{item.name}</span>
+                          <span className={`font-medium ${isActive ? "text-primary" : ""}`}>{item.name}</span>
                           {showBadge && !isCollapsed && (
-                            <span className="mr-auto h-5 min-w-5 px-1.5 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white text-xs font-medium shadow-sm">
+                            <span className="mr-auto h-5 min-w-5 px-1.5 flex items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[11px] font-bold shadow-md shadow-primary/30">
                               {unreadCount > 99 ? "99+" : unreadCount}
                             </span>
                           )}
@@ -302,10 +317,10 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Settings Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel>הגדרות</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3">הגדרות</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1 px-2">
               {settingsNav.map((item) => {
                 const isActive = pathname === item.href;
 
@@ -316,10 +331,13 @@ export function AppSidebar() {
                         asChild
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
+                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : "hover:bg-muted/80"}`}
                       >
-                        <Link href={item.href} onClick={handleLinkClick}>
-                          <item.icon className="size-4" />
-                          <span>{item.name}</span>
+                        <Link href={item.href} onClick={handleLinkClick} className="relative">
+                          <div className={`p-1.5 rounded-md transition-colors ${isActive ? "bg-primary/10" : ""}`}>
+                            <item.icon className={`size-4 ${isActive ? "text-primary" : ""}`} />
+                          </div>
+                          <span className={`font-medium ${isActive ? "text-primary" : ""}`}>{item.name}</span>
                         </Link>
                       </SidebarMenuButton>
                     </AnimateIcon>
@@ -332,7 +350,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border/50 p-2">
         <UserNav />
       </SidebarFooter>
 
