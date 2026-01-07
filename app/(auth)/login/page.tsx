@@ -87,30 +87,38 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md shadow-lg">
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-          <MessageCircle className="w-8 h-8 text-white" />
+    <Card className="w-full max-w-md shadow-2xl border-0 bg-card/95 backdrop-blur-sm">
+      <CardHeader className="text-center space-y-6 pb-2">
+        {/* Logo with glow effect */}
+        <div className="relative mx-auto">
+          <div className="absolute inset-0 w-20 h-20 bg-brand-gradient rounded-2xl blur-xl opacity-50" />
+          <div className="relative w-20 h-20 bg-brand-gradient rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 transition-transform duration-300">
+            <MessageCircle className="w-10 h-10 text-white" />
+          </div>
         </div>
-        <div>
-          <CardTitle className="text-2xl">WhizChat</CardTitle>
-          <CardDescription className="mt-2">
+        <div className="space-y-2">
+          <CardTitle className="text-3xl font-bold bg-clip-text text-transparent bg-brand-gradient">
+            WhizChat
+          </CardTitle>
+          <CardDescription className="text-base">
             התחבר לדשבורד הנציגים
           </CardDescription>
         </div>
       </CardHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="flex items-center gap-3 p-4 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900/50 animate-shake">
+              <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              </div>
               <span>{error}</span>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">אימייל</Label>
+          <div className="space-y-2.5">
+            <Label htmlFor="email" className="text-sm font-medium">אימייל</Label>
             <Input
               id="email"
               type="email"
@@ -120,12 +128,12 @@ export default function LoginPage() {
               required
               autoComplete="email"
               dir="ltr"
-              className="text-left"
+              className="text-left h-12 rounded-xl border-border/60 bg-muted/30 focus:bg-background focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">סיסמה</Label>
+          <div className="space-y-2.5">
+            <Label htmlFor="password" className="text-sm font-medium">סיסמה</Label>
             <PasswordInput
               id="password"
               placeholder="••••••••"
@@ -134,24 +142,29 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
               dir="ltr"
-              className="text-left"
+              className="text-left h-12 rounded-xl border-border/60 bg-muted/30 focus:bg-background focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
 
           <Button
             type="submit"
-            className="w-full bg-gradient-to-r from-fuchsia-600 to-pink-600 hover:from-fuchsia-700 hover:to-pink-700"
+            className="w-full h-12 text-base font-semibold bg-brand-gradient hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-primary/25 rounded-xl"
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin ml-2" />
+                <Loader2 className="w-5 h-5 animate-spin ml-2" />
                 מתחבר...
               </>
             ) : (
               "התחבר"
             )}
           </Button>
+
+          {/* Footer text */}
+          <p className="text-center text-xs text-muted-foreground pt-4">
+            מערכת צ'אט חכמה לתמיכה בלקוחות
+          </p>
         </form>
       </CardContent>
     </Card>

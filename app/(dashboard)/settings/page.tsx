@@ -293,9 +293,12 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">טוען הגדרות...</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <Loader2 className="w-12 h-12 animate-spin text-primary relative" />
+          </div>
+          <span className="text-sm text-muted-foreground font-medium">טוען הגדרות...</span>
         </div>
       </div>
     );
@@ -303,8 +306,11 @@ export default function SettingsPage() {
 
   if (!settings) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        לא ניתן לטעון את ההגדרות
+      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+          <SlidersHorizontal className="w-8 h-8 opacity-50" />
+        </div>
+        <p className="font-medium">לא ניתן לטעון את ההגדרות</p>
       </div>
     );
   }
@@ -323,14 +329,19 @@ export default function SettingsPage() {
           {/* Header - hidden on mobile */}
           <Fade inView className="hidden md:block">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold">הגדרות</h1>
-                <p className="text-muted-foreground mt-1">
-                  נהל את הגדרות המערכת והעדפות הצ'אט
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-brand-gradient flex items-center justify-center shadow-md shadow-primary/25">
+                  <SlidersHorizontal className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold">הגדרות</h1>
+                  <p className="text-muted-foreground mt-0.5">
+                    נהל את הגדרות המערכת והעדפות הצ'אט
+                  </p>
+                </div>
               </div>
               <AnimateIcon animateOnHover asChild>
-                <Button onClick={handleSave} disabled={isSaving} className="gap-2">
+                <Button onClick={handleSave} disabled={isSaving} className={`gap-2 shadow-md transition-all ${saveSuccess ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25" : "shadow-primary/25"}`}>
                   {isSaving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : saveSuccess ? (
@@ -347,7 +358,7 @@ export default function SettingsPage() {
           {/* Mobile save button */}
           <div className="md:hidden">
             <AnimateIcon animateOnHover asChild>
-              <Button onClick={handleSave} disabled={isSaving} className="gap-2 w-full">
+              <Button onClick={handleSave} disabled={isSaving} className={`gap-2 w-full shadow-md ${saveSuccess ? "bg-emerald-500 hover:bg-emerald-600" : ""}`}>
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : saveSuccess ? (
@@ -363,58 +374,60 @@ export default function SettingsPage() {
         {/* Tabs */}
         <Fade inView delay={100}>
           <Tabs defaultValue="hours" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 h-12">
-              <TabsTrigger value="hours" className="gap-2">
+            <TabsList className="grid w-full grid-cols-6 h-14 p-1.5 bg-muted/50 rounded-xl gap-1">
+              <TabsTrigger value="hours" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
                 <Clock className="w-4 h-4" />
-                <span className="hidden sm:inline">שעות פעילות</span>
+                <span className="hidden sm:inline font-medium">שעות פעילות</span>
               </TabsTrigger>
-              <TabsTrigger value="messages" className="gap-2">
+              <TabsTrigger value="messages" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
                 <MessageSquare className="w-4 h-4" />
-                <span className="hidden sm:inline">הודעות</span>
+                <span className="hidden sm:inline font-medium">הודעות</span>
               </TabsTrigger>
-              <TabsTrigger value="widget" className="gap-2">
+              <TabsTrigger value="widget" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
                 <Palette className="w-4 h-4" />
-                <span className="hidden sm:inline">עיצוב</span>
+                <span className="hidden sm:inline font-medium">עיצוב</span>
               </TabsTrigger>
-              <TabsTrigger value="whatsapp" className="gap-2">
+              <TabsTrigger value="whatsapp" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-emerald-600 transition-all">
                 <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">WhatsApp</span>
+                <span className="hidden sm:inline font-medium">WhatsApp</span>
               </TabsTrigger>
-              <TabsTrigger value="archive" className="gap-2">
+              <TabsTrigger value="archive" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
                 <Archive className="w-4 h-4" />
-                <span className="hidden sm:inline">ארכיון</span>
+                <span className="hidden sm:inline font-medium">ארכיון</span>
               </TabsTrigger>
-              <TabsTrigger value="app" className="gap-2">
+              <TabsTrigger value="app" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary transition-all">
                 <Smartphone className="w-4 h-4" />
-                <span className="hidden sm:inline">אפליקציה</span>
+                <span className="hidden sm:inline font-medium">אפליקציה</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContents className="mt-6">
             {/* Business Hours Tab */}
             <TabsContent value="hours">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="border-b bg-gradient-to-l from-muted/30 to-transparent">
+                  <CardTitle className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Clock className="w-5 h-5 text-primary" />
+                    </div>
                     שעות פעילות
                   </CardTitle>
                   <CardDescription>
                     הגדר מתי הצוות זמין לשיחות. מחוץ לשעות אלו יוצגו הודעות אופליין.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-6">
                   {/* Quick preview of schedule */}
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 mb-6">
-                    <span className="text-sm text-muted-foreground">סקירה:</span>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-l from-muted/50 to-muted/20 border border-border/50 mb-6">
+                    <span className="text-sm font-medium text-muted-foreground">סקירה:</span>
+                    <div className="flex items-center gap-1.5">
                       {DAYS.map((day) => {
                         const isActive = settings.business_hours.schedule[day.key] !== null;
                         return (
                           <Badge
                             key={day.key}
                             variant={isActive ? "default" : "outline"}
-                            className="w-7 h-7 p-0 flex items-center justify-center text-xs"
+                            className={`w-8 h-8 p-0 flex items-center justify-center text-xs font-bold rounded-lg transition-all ${isActive ? "shadow-sm" : "opacity-50"}`}
                           >
                             {day.short}
                           </Badge>

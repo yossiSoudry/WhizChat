@@ -273,7 +273,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3">ניווט ראשי</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1 px-2">
+            <SidebarMenu className={`gap-1 ${isCollapsed ? "" : "px-2"}`}>
               {navigation
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => {
@@ -289,13 +289,13 @@ export function AppSidebar() {
                         asChild
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
-                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : "hover:bg-muted/80"}`}
+                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted/80"} ${isActive && !isCollapsed ? "before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : ""}`}
                       >
                         <Link href={item.href} className="flex items-center gap-2.5 w-full relative" onClick={handleLinkClick}>
-                          <div className={`relative shrink-0 p-1.5 rounded-md transition-colors ${isActive ? "bg-primary/10" : ""}`}>
+                          <div className="relative shrink-0">
                             <item.icon className={`size-4 ${isActive ? "text-primary" : ""}`} />
                             {showBadge && isCollapsed && (
-                              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[10px] font-bold shadow-md shadow-primary/30 animate-pulse">
+                              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[10px] font-bold shadow-md shadow-primary/30 animate-pulse">
                                 {unreadCount > 99 ? "99+" : unreadCount}
                               </span>
                             )}
@@ -320,7 +320,7 @@ export function AppSidebar() {
         <SidebarGroup className="mt-2">
           <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-3">הגדרות</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1 px-2">
+            <SidebarMenu className={`gap-1 ${isCollapsed ? "" : "px-2"}`}>
               {settingsNav.map((item) => {
                 const isActive = pathname === item.href;
 
@@ -331,12 +331,10 @@ export function AppSidebar() {
                         asChild
                         isActive={isActive}
                         tooltip={isCollapsed ? item.name : undefined}
-                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : "hover:bg-muted/80"}`}
+                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-primary/10 text-primary shadow-sm" : "hover:bg-muted/80"} ${isActive && !isCollapsed ? "before:absolute before:right-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:bg-primary before:rounded-l-full" : ""}`}
                       >
                         <Link href={item.href} onClick={handleLinkClick} className="relative">
-                          <div className={`p-1.5 rounded-md transition-colors ${isActive ? "bg-primary/10" : ""}`}>
-                            <item.icon className={`size-4 ${isActive ? "text-primary" : ""}`} />
-                          </div>
+                          <item.icon className={`size-4 ${isActive ? "text-primary" : ""}`} />
                           <span className={`font-medium ${isActive ? "text-primary" : ""}`}>{item.name}</span>
                         </Link>
                       </SidebarMenuButton>
