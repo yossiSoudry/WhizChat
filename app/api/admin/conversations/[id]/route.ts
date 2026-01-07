@@ -40,6 +40,9 @@ export async function GET(
             replyToFileUrl: true,
           },
         },
+        notes: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -50,11 +53,17 @@ export async function GET(
       );
     }
 
+    // Count media files
+    const mediaMessages = conversation.messages.filter(
+      (m) => m.messageType && m.messageType !== "text" && m.fileUrl
+    );
+
     return NextResponse.json({
       conversation: {
         id: conversation.id,
         customerName: conversation.wpUserName || conversation.guestName || "Anonymous",
-        customerEmail: conversation.wpUserEmail || conversation.guestContact || null,
+        customerEmail: conversation.wpUserEmail || conversation.guestEmail || conversation.guestContact || null,
+        customerPhone: conversation.guestPhone || conversation.waPhone || null,
         customerAvatar: conversation.wpUserAvatar || null,
         customerType: conversation.wpUserId ? "wordpress" : "guest",
         contactType: conversation.contactType,
@@ -67,8 +76,17 @@ export async function GET(
         waPhone: conversation.waPhone,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
+        mediaCount: mediaMessages.length,
       },
       messages: conversation.messages,
+      notes: conversation.notes,
+      media: mediaMessages.map((m) => ({
+        id: m.id,
+        type: m.messageType,
+        url: m.fileUrl,
+        name: m.fileName,
+        createdAt: m.createdAt,
+      })),
     });
   } catch (error) {
     console.error("Get conversation error:", error);

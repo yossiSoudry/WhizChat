@@ -9,12 +9,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Log all incoming webhooks for debugging
+    console.log("WhatsApp webhook received:", JSON.stringify(body, null, 2));
+
     // Verify webhook token (optional but recommended)
     const webhookToken = request.headers.get("x-webhook-token");
     if (
       process.env.GREEN_API_WEBHOOK_TOKEN &&
       webhookToken !== process.env.GREEN_API_WEBHOOK_TOKEN
     ) {
+      console.log("WhatsApp webhook unauthorized - token mismatch");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,6 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Unknown webhook type
+    console.log("WhatsApp webhook unknown type:", body.typeWebhook);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("WhatsApp webhook error:", error);
@@ -145,25 +150,45 @@ async function handleIncomingMessage(body: {
     } else {
       // This might be a direct message from a customer via WhatsApp
       // Find conversation by WhatsApp chat ID
-      const conversation = await prisma.conversation.findFirst({
+      let conversation = await prisma.conversation.findFirst({
         where: { waChatId: senderData.chatId },
       });
 
-      if (conversation) {
-        // Create message from customer via WhatsApp
-        await prisma.message.create({
+      // Extract phone number from chatId (format: 972501234567@c.us)
+      const waPhone = senderData.chatId.replace("@c.us", "");
+      const customerName = senderData.senderName || "לקוח WhatsApp";
+
+      // If no existing conversation, create a new one
+      if (!conversation) {
+        console.log("Creating new conversation for WhatsApp customer:", waPhone);
+        conversation = await prisma.conversation.create({
           data: {
-            conversationId: conversation.id,
-            content: messageText,
-            senderType: "customer",
-            senderName: senderData.senderName || "Customer",
-            source: "whatsapp",
-            waMessageId: idMessage,
-            waStatus: "delivered",
+            waChatId: senderData.chatId,
+            waPhone: waPhone,
+            guestName: customerName,
+            status: "active",
+            lastMessageAt: new Date(),
+            lastMessagePreview: messageText.slice(0, 100),
+            unreadCount: 1,
           },
         });
+      }
 
-        // Update conversation
+      // Create message from customer via WhatsApp
+      await prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          content: messageText,
+          senderType: "customer",
+          senderName: customerName,
+          source: "whatsapp",
+          waMessageId: idMessage,
+          waStatus: "delivered",
+        },
+      });
+
+      // Update conversation (if it already existed)
+      if (conversation.createdAt < new Date(Date.now() - 1000)) {
         await prisma.conversation.update({
           where: { id: conversation.id },
           data: {
@@ -172,25 +197,25 @@ async function handleIncomingMessage(body: {
             unreadCount: { increment: 1 },
           },
         });
-
-        // Send notifications to agents (non-blocking)
-        const customerName = senderData.senderName || "לקוח";
-
-        // WhatsApp notifications
-        notifyAgentsOnNewMessage({
-          conversationId: conversation.id,
-          customerName,
-          messagePreview: messageText,
-          customerPhone: conversation.waPhone || undefined,
-        }).catch((error) => {
-          console.error("Failed to send WhatsApp notifications:", error);
-        });
-
-        // Push notifications
-        notifyAgentsOfNewMessage(customerName, messageText, conversation.id).catch((error) => {
-          console.error("Failed to send push notifications:", error);
-        });
       }
+
+      // Send notifications to agents (non-blocking)
+      console.log("Sending notifications to agents for WhatsApp message from:", customerName);
+
+      // WhatsApp notifications
+      notifyAgentsOnNewMessage({
+        conversationId: conversation.id,
+        customerName,
+        messagePreview: messageText,
+        customerPhone: waPhone,
+      }).catch((error) => {
+        console.error("Failed to send WhatsApp notifications:", error);
+      });
+
+      // Push notifications
+      notifyAgentsOfNewMessage(customerName, messageText, conversation.id).catch((error) => {
+        console.error("Failed to send push notifications:", error);
+      });
     }
 
     return NextResponse.json({ ok: true });

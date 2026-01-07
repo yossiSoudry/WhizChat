@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/tooltip";
 import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
+import { CustomerProfileDrawer } from "./customer-profile-drawer";
 import dynamic from "next/dynamic";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -123,6 +124,7 @@ interface ConversationDetails {
   id: string;
   customerName: string;
   customerEmail: string | null;
+  customerPhone: string | null;
   customerAvatar: string | null;
   customerType: "wordpress" | "guest";
   contactType: "email" | "whatsapp" | "none";
@@ -130,6 +132,24 @@ interface ConversationDetails {
   movedToWhatsapp: boolean;
   waPhone: string | null;
   lastReadAtCustomer: string | null;
+  createdAt: string;
+  mediaCount?: number;
+}
+
+interface CustomerNote {
+  id: string;
+  content: string;
+  agentId: string;
+  agentName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MediaItem {
+  id: string;
+  type: "image" | "file" | "audio" | "video";
+  url: string;
+  name: string;
   createdAt: string;
 }
 
@@ -214,6 +234,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [customerNotes, setCustomerNotes] = useState<CustomerNote[]>([]);
+  const [customerMedia, setCustomerMedia] = useState<MediaItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +266,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         const data = await res.json();
         setConversation(data.conversation);
         setMessages(data.messages || []);
+        setCustomerNotes(data.notes || []);
+        setCustomerMedia(data.media || []);
 
         // Mark as read by agent when opening the chat
         const readRes = await fetch("/api/chat/read", {
@@ -787,16 +812,23 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   return (
     <div className="flex flex-col h-full bg-background relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b bg-card">
+        {/* Clickable area - opens profile drawer */}
+        <button
+          onClick={() => setShowProfileDrawer(true)}
+          className="flex-1 flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer text-right"
+        >
           {/* Back button for mobile */}
           {showBackButton && (
-            <button
-              onClick={onClose}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
               className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
             >
               <ArrowRight className="w-5 h-5 text-muted-foreground" />
-            </button>
+            </div>
           )}
           <div className="relative">
             <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
@@ -811,7 +843,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full status-online border-2 border-card" />
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">
                 {conversation.customerName}
@@ -838,10 +870,10 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
               )}
             </div>
           </div>
-        </div>
+        </button>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1.5">
+        {/* Actions - not clickable for profile */}
+        <div className="flex items-center gap-1.5 px-4 py-3">
           {conversation.waPhone && (
             <Button variant="ghost" size="sm" className="gap-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
               <Phone className="w-4 h-4" />
@@ -1386,6 +1418,22 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           onCancel={handleImageCancel}
         />
       )}
+
+      {/* Customer Profile Drawer */}
+      <CustomerProfileDrawer
+        open={showProfileDrawer}
+        onOpenChange={setShowProfileDrawer}
+        conversationId={conversationId}
+        customerName={conversation?.customerName || ""}
+        customerEmail={conversation?.customerEmail || null}
+        customerPhone={conversation?.customerPhone || null}
+        customerAvatar={conversation?.customerAvatar || null}
+        customerType={conversation?.customerType || "guest"}
+        createdAt={conversation?.createdAt || ""}
+        notes={customerNotes}
+        media={customerMedia}
+        onNotesChange={setCustomerNotes}
+      />
     </div>
   );
 }
