@@ -861,7 +861,7 @@ export default function SettingsPage() {
     chatBackground: '${settings.widget.chatBackground}'
   };
 </script>
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js?v=1.6.1" defer></script>`}
+<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://your-domain.com'}/widget.js" defer></script>`}
                       </pre>
                       <Button
                         type="button"

@@ -123,9 +123,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Get settings
-    const [messagesSettings, widgetSettings] = await Promise.all([
+    const [messagesSettings, widgetSettings, whatsappSettings] = await Promise.all([
       prisma.setting.findUnique({ where: { key: "messages" } }),
       prisma.setting.findUnique({ where: { key: "widget" } }),
+      prisma.setting.findUnique({ where: { key: "whatsapp" } }),
     ]);
 
     // Get FAQ items
@@ -218,6 +219,7 @@ export async function POST(request: NextRequest) {
           position: "right",
           primaryColor: "#C026D3",
         },
+        whatsappPhone: (whatsappSettings?.value as { businessPhone?: string } | null)?.businessPhone || null,
       },
     });
   } catch (error) {
