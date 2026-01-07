@@ -22,6 +22,9 @@ export interface FAQItem {
 export interface Conversation {
   id: string;
   status: "active" | "closed" | "pending";
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
 }
 
 export interface WidgetSettings {

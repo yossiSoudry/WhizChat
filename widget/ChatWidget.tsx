@@ -112,6 +112,17 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   const [pushPermission, setPushPermission] = useState<NotificationPermission | "default">("default");
   const [showSettings, setShowSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Intro form state (for new anonymous users)
+  const [showIntroForm, setShowIntroForm] = useState(false);
+  const [introExpanded, setIntroExpanded] = useState(false);
+  const [introName, setIntroName] = useState("");
+  const [introEmail, setIntroEmail] = useState("");
+  const [introPhone, setIntroPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+972");
+  const [introSubmitted, setIntroSubmitted] = useState(false);
+  const [existingGuestName, setExistingGuestName] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -241,6 +252,12 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         setIsOnline(data.settings.isOnline);
         setWelcomeMessage(data.settings.welcomeMessage);
         setFaqItems(data.settings.faqItems || []);
+
+        // Check if guest already has name (returning visitor)
+        if (data.conversation.guestName) {
+          setExistingGuestName(data.conversation.guestName);
+          setIntroSubmitted(true); // Don't show form if they already submitted
+        }
 
         // Mark agent messages as read by customer
         await fetch(`${apiUrl}/api/chat/read`, {
@@ -488,12 +505,16 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
   async function sendMessage(content: string) {
     if (!content.trim() || !conversationId || isSending) return;
 
+    // Check if this is the first message from an anonymous user
+    const isFirstMessage = messages.filter(m => m.senderType === "customer").length === 0;
+    const isAnonymousUser = !wpUserId;
+
     const clientMessageId = generateId();
     const tempMessage: Message = {
       id: clientMessageId,
       content,
       senderType: "customer",
-      senderName: userName || null,
+      senderName: userName || introName || null,
       source: "widget",
       createdAt: new Date().toISOString(),
       status: "sent",
@@ -504,6 +525,11 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     setIsSending(true);
     sendTypingStatus(false); // Stop typing indicator when sending
 
+    // Show intro form after first message for anonymous users who haven't submitted yet
+    if (isFirstMessage && isAnonymousUser && !introSubmitted && !existingGuestName) {
+      setShowIntroForm(true);
+    }
+
     try {
       const res = await fetch(`${apiUrl}/api/chat/send`, {
         method: "POST",
@@ -513,7 +539,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
           content,
           clientMessageId,
           senderType: "customer",
-          senderName: userName || undefined,
+          senderName: userName || introName || undefined,
         }),
       });
 
@@ -582,6 +608,80 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
       console.error("Failed to submit contact:", error);
     }
   }
+
+  // Submit intro form (guest info)
+  async function submitIntroForm() {
+    if (!conversationId) return;
+
+    const fullPhone = introPhone ? `${countryCode}${introPhone}` : undefined;
+
+    try {
+      await fetch(`${apiUrl}/api/chat/intro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          guestName: introName || undefined,
+          guestEmail: introEmail || undefined,
+          guestPhone: fullPhone,
+        }),
+      });
+
+      // Update local state
+      if (introName) {
+        setUserName(introName);
+        setExistingGuestName(introName);
+      }
+
+      setIntroSubmitted(true);
+      setShowIntroForm(false);
+    } catch (error) {
+      console.error("Failed to submit intro:", error);
+    }
+  }
+
+  // Detect country code on mount
+  useEffect(() => {
+    async function detectCountryCode() {
+      try {
+        const res = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.country_calling_code) {
+            setCountryCode(data.country_calling_code);
+          }
+        }
+      } catch {
+        // Silently fail - keep default +972
+      }
+    }
+    detectCountryCode();
+  }, []);
+
+  // Common country codes for dropdown
+  const countryCodes = [
+    { code: "+972", country: "IL" },
+    { code: "+1", country: "US" },
+    { code: "+44", country: "UK" },
+    { code: "+49", country: "DE" },
+    { code: "+33", country: "FR" },
+    { code: "+39", country: "IT" },
+    { code: "+34", country: "ES" },
+    { code: "+31", country: "NL" },
+    { code: "+32", country: "BE" },
+    { code: "+41", country: "CH" },
+    { code: "+43", country: "AT" },
+    { code: "+48", country: "PL" },
+    { code: "+7", country: "RU" },
+    { code: "+86", country: "CN" },
+    { code: "+81", country: "JP" },
+    { code: "+82", country: "KR" },
+    { code: "+91", country: "IN" },
+    { code: "+61", country: "AU" },
+    { code: "+55", country: "BR" },
+    { code: "+52", country: "MX" },
+    { code: "+971", country: "AE" },
+  ];
 
   // Upload file
   async function uploadFile(file: File) {
@@ -1194,6 +1294,101 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
         }
 
         /* ========================================
+           Intro Form (Guest Introduction)
+           ======================================== */
+        .wc-intro-form {
+          background: var(--wc-bg);
+          border-radius: 16px;
+          padding: 16px;
+          margin: 8px 0;
+          border: 1px solid var(--wc-border);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+          animation: wc-fade-in 0.3s ease-out;
+        }
+
+        .wc-intro-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--wc-text);
+          margin-bottom: 12px;
+          text-align: center;
+        }
+
+        .wc-intro-input {
+          width: 100%;
+          padding: 12px 14px;
+          border: 1px solid var(--wc-border);
+          border-radius: 10px;
+          font-size: 14px;
+          outline: none;
+          transition: all 0.2s ease;
+          margin-bottom: 10px;
+          box-sizing: border-box;
+          background: var(--wc-bg);
+          color: var(--wc-text);
+        }
+
+        .wc-intro-input:focus {
+          border-color: var(--wc-primary);
+          box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.1);
+        }
+
+        .wc-intro-input::placeholder {
+          color: var(--wc-text-secondary);
+        }
+
+        .wc-phone-group {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 10px;
+        }
+
+        .wc-country-select {
+          width: 100px;
+          padding: 12px 8px;
+          border: 1px solid var(--wc-border);
+          border-radius: 10px;
+          font-size: 13px;
+          outline: none;
+          background: var(--wc-bg);
+          color: var(--wc-text);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .wc-country-select:focus {
+          border-color: var(--wc-primary);
+        }
+
+        .wc-phone-input {
+          flex: 1;
+          margin-bottom: 0;
+        }
+
+        .wc-intro-submit {
+          width: 100%;
+          padding: 12px;
+          background: linear-gradient(135deg, var(--wc-primary), var(--wc-primary-hover));
+          color: white;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .wc-intro-submit:hover {
+          opacity: 0.9;
+          transform: translateY(-1px);
+        }
+
+        .wc-intro-submit:active {
+          transform: translateY(0);
+        }
+
+        /* ========================================
            Loading
            ======================================== */
         .wc-loading {
@@ -1671,6 +1866,55 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
                     )}
                   </div>
                 ))}
+
+                {/* Intro Form - show after first message for anonymous users */}
+                {showIntroForm && (
+                  <div className="wc-intro-form">
+                    <div className="wc-intro-title">Please introduce yourself in chat</div>
+                    <input
+                      type="text"
+                      className="wc-intro-input"
+                      placeholder="Your name"
+                      value={introName}
+                      onChange={(e) => setIntroName(e.target.value)}
+                      onFocus={() => setIntroExpanded(true)}
+                    />
+                    {introExpanded && (
+                      <>
+                        <input
+                          type="email"
+                          className="wc-intro-input"
+                          placeholder="Email (optional)"
+                          value={introEmail}
+                          onChange={(e) => setIntroEmail(e.target.value)}
+                        />
+                        <div className="wc-phone-group">
+                          <select
+                            className="wc-country-select"
+                            value={countryCode}
+                            onChange={(e) => setCountryCode(e.target.value)}
+                          >
+                            {countryCodes.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.code} {c.country}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="tel"
+                            className="wc-intro-input wc-phone-input"
+                            placeholder="Phone number (optional)"
+                            value={introPhone}
+                            onChange={(e) => setIntroPhone(e.target.value.replace(/\D/g, ''))}
+                          />
+                        </div>
+                      </>
+                    )}
+                    <button className="wc-intro-submit" onClick={submitIntroForm}>
+                      Continue
+                    </button>
+                  </div>
+                )}
 
                 {/* Typing indicator - show when agent is typing */}
                 {(isTyping || agentIsTyping) && (

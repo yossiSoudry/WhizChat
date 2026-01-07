@@ -198,6 +198,8 @@ export async function POST(request: NextRequest) {
         unreadCount: conversation.unreadCount,
         contactType: conversation.contactType,
         guestName: conversation.guestName,
+        guestEmail: conversation.guestEmail,
+        guestPhone: conversation.guestPhone,
         guestContact: conversation.guestContact,
       },
       messages: conversation.messages,

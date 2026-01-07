@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         id: true,
         content: true,
         senderType: true,
+        senderId: true,
         senderName: true,
         senderAvatar: true,
         source: true,

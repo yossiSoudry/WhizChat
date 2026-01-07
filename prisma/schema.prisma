@@ -87,6 +87,8 @@ model Conversation {
 
   // Guest contact info (collected during chat)
   guestName    String?     @map("guest_name")
+  guestEmail   String?     @map("guest_email")
+  guestPhone   String?     @map("guest_phone")
   guestContact String?     @map("guest_contact")
   contactType  ContactType @default(none) @map("contact_type")
 

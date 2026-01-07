@@ -1054,7 +1054,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                           )}
                         >
                           {/* Reply preview */}
-                          {message.replyToId && message.replyToContent && (
+                          {message.replyToId && (message.replyToContent || message.replyToFileUrl) && (
                             <div
                               className={cn(
                                 "flex items-stretch gap-2 mb-2 px-2 py-1.5 rounded-lg cursor-pointer text-xs",
@@ -1087,7 +1087,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                                   />
                                 </div>
                               )}
-                              <div className="flex flex-col min-w-0">
+                              <div className="flex flex-col justify-center min-w-0">
                                 <span className={cn(
                                   "font-semibold",
                                   isAgent ? "text-white/90" : "text-primary"
@@ -1102,7 +1102,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                                     ? "📷 תמונה"
                                     : message.replyToContent && message.replyToContent.length > 50
                                       ? message.replyToContent.substring(0, 50) + '...'
-                                      : message.replyToContent}
+                                      : message.replyToContent || "📷 תמונה"}
                                 </span>
                               </div>
                             </div>
@@ -1247,8 +1247,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           >
             {/* Reply bar */}
             {replyingTo && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-card border border-border rounded-xl shadow-sm animate-fade-in">
-                <div className="w-1 h-10 bg-primary rounded-full flex-shrink-0" />
+              <div className="flex items-stretch gap-2 mb-2 px-3 py-2 bg-card border border-border rounded-xl shadow-sm animate-fade-in">
+                <div className="w-1 bg-primary rounded-full flex-shrink-0" />
                 {/* Image thumbnail for image replies */}
                 {replyingTo.messageType === "image" && replyingTo.fileUrl && (
                   <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
@@ -1259,7 +1259,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
                   <div className="text-sm font-medium text-primary">
                     {replyingTo.senderType === "agent"
                       ? (replyingTo.senderName || agent?.name || "Agent")
@@ -1268,9 +1268,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                   <div className="text-sm text-muted-foreground truncate">
                     {replyingTo.messageType === "image" && !replyingTo.content?.trim()
                       ? "📷 תמונה"
-                      : replyingTo.content.length > 60
-                        ? replyingTo.content.substring(0, 60) + '...'
-                        : replyingTo.content}
+                      : (replyingTo.content?.length || 0) > 60
+                        ? replyingTo.content?.substring(0, 60) + '...'
+                        : replyingTo.content || "📷 תמונה"}
                   </div>
                 </div>
                 <Button
