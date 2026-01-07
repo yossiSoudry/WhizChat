@@ -2,7 +2,7 @@
   'use strict';
 
   // Configuration
-  var WIDGET_VERSION = '1.6.1';
+  // Version removed - single auto-updating version
   var API_BASE_URL = window.WHIZCHAT_API_URL || '';
   var STORAGE_SOUND_KEY = 'whizchat-widget-sound';
   var STORAGE_PUSH_KEY = 'whizchat-widget-push';
@@ -24,7 +24,41 @@
     showSettings: false,
     unreadCount: 0,
     lastMessageId: null,
+    // Intro form state
+    showIntroForm: false,
+    introExpanded: false,
+    introName: '',
+    introEmail: '',
+    introPhone: '',
+    countryCode: '+972',
+    introSubmitted: false,
+    existingGuestName: null,
   };
+
+  // Country codes for phone input
+  var countryCodes = [
+    { code: '+972', country: 'IL' },
+    { code: '+1', country: 'US' },
+    { code: '+44', country: 'UK' },
+    { code: '+49', country: 'DE' },
+    { code: '+33', country: 'FR' },
+    { code: '+39', country: 'IT' },
+    { code: '+34', country: 'ES' },
+    { code: '+31', country: 'NL' },
+    { code: '+32', country: 'BE' },
+    { code: '+41', country: 'CH' },
+    { code: '+43', country: 'AT' },
+    { code: '+48', country: 'PL' },
+    { code: '+7', country: 'RU' },
+    { code: '+86', country: 'CN' },
+    { code: '+81', country: 'JP' },
+    { code: '+82', country: 'KR' },
+    { code: '+91', country: 'IN' },
+    { code: '+61', country: 'AU' },
+    { code: '+55', country: 'BR' },
+    { code: '+52', country: 'MX' },
+    { code: '+971', country: 'AE' },
+  ];
 
   // Config from window object (can be overridden by WordPress config)
   // Re-read on init to handle async script loading in Next.js
@@ -815,6 +849,98 @@
           height: calc(100vh - 120px);
           bottom: 80px;
         }
+      }
+
+      /* Intro Form (Guest Introduction) */
+      .whizchat-intro-form {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        margin: 8px 0;
+        border: 1px solid #E8EAED;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+
+      .whizchat-intro-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a1a2e;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      .whizchat-intro-input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #E8EAED;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s ease;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+        background: white;
+        color: #1a1a2e;
+      }
+
+      .whizchat-intro-input:focus {
+        border-color: var(--widget-primary);
+        box-shadow: 0 0 0 3px rgba(192, 38, 211, 0.1);
+      }
+
+      .whizchat-intro-input::placeholder {
+        color: #6B7280;
+      }
+
+      .whizchat-phone-group {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .whizchat-country-select {
+        width: 100px;
+        padding: 12px 8px;
+        border: 1px solid #E8EAED;
+        border-radius: 10px;
+        font-size: 13px;
+        outline: none;
+        background: white;
+        color: #1a1a2e;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .whizchat-country-select:focus {
+        border-color: var(--widget-primary);
+      }
+
+      .whizchat-phone-input {
+        flex: 1;
+        margin-bottom: 0;
+      }
+
+      .whizchat-intro-submit {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+      }
+
+      .whizchat-intro-submit:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+
+      .whizchat-intro-submit:active {
+        transform: translateY(0);
       }
 
       /* Legacy attach styles removed - using .whizchat-action-btn instead */
@@ -1866,6 +1992,59 @@
       container.appendChild(row);
     });
 
+    // Intro Form - show after first message for anonymous users
+    if (state.showIntroForm) {
+      var introForm = document.createElement('div');
+      introForm.className = 'whizchat-intro-form';
+      introForm.innerHTML =
+        '<div class="whizchat-intro-title">Please introduce yourself in chat</div>' +
+        '<input type="text" class="whizchat-intro-input" id="whizchat-intro-name" placeholder="Your name" value="' + escapeHtml(state.introName) + '" />' +
+        (state.introExpanded ?
+          '<input type="email" class="whizchat-intro-input" id="whizchat-intro-email" placeholder="Email (optional)" value="' + escapeHtml(state.introEmail) + '" />' +
+          '<div class="whizchat-phone-group">' +
+            '<select class="whizchat-country-select" id="whizchat-country-code">' +
+              countryCodes.map(function(c) {
+                return '<option value="' + c.code + '"' + (c.code === state.countryCode ? ' selected' : '') + '>' + c.code + ' ' + c.country + '</option>';
+              }).join('') +
+            '</select>' +
+            '<input type="tel" class="whizchat-intro-input whizchat-phone-input" id="whizchat-intro-phone" placeholder="Phone number (optional)" value="' + escapeHtml(state.introPhone) + '" />' +
+          '</div>'
+        : '') +
+        '<button class="whizchat-intro-submit" id="whizchat-intro-submit">Continue</button>';
+      container.appendChild(introForm);
+
+      // Bind intro form events after rendering
+      setTimeout(function() {
+        var nameInput = document.getElementById('whizchat-intro-name');
+        var emailInput = document.getElementById('whizchat-intro-email');
+        var phoneInput = document.getElementById('whizchat-intro-phone');
+        var countrySelect = document.getElementById('whizchat-country-code');
+        var submitBtn = document.getElementById('whizchat-intro-submit');
+
+        if (nameInput) {
+          nameInput.oninput = function() { state.introName = this.value; };
+          nameInput.onfocus = function() {
+            if (!state.introExpanded) {
+              state.introExpanded = true;
+              renderMessages();
+            }
+          };
+        }
+        if (emailInput) {
+          emailInput.oninput = function() { state.introEmail = this.value; };
+        }
+        if (phoneInput) {
+          phoneInput.oninput = function() { state.introPhone = this.value.replace(/\D/g, ''); };
+        }
+        if (countrySelect) {
+          countrySelect.onchange = function() { state.countryCode = this.value; };
+        }
+        if (submitBtn) {
+          submitBtn.onclick = function() { submitIntroForm(); };
+        }
+      }, 0);
+    }
+
     // Scroll to bottom
     container.scrollTop = container.scrollHeight;
 
@@ -2114,6 +2293,12 @@
       state.faqItems = data.settings.faqItems || [];
       state.isLoading = false;
 
+      // Check if guest already has name (returning visitor)
+      if (data.conversation.guestName) {
+        state.existingGuestName = data.conversation.guestName;
+        state.introSubmitted = true;
+      }
+
       // Apply widget settings from API (if not overridden by WordPress config)
       if (data.settings.widget) {
         var apiWidget = data.settings.widget;
@@ -2157,9 +2342,58 @@
     });
   }
 
+  // Submit intro form (guest info)
+  function submitIntroForm() {
+    if (!state.conversationId) return;
+
+    var fullPhone = state.introPhone ? (state.countryCode + state.introPhone) : undefined;
+
+    fetch(API_BASE_URL + '/api/chat/intro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversationId: state.conversationId,
+        guestName: state.introName || undefined,
+        guestEmail: state.introEmail || undefined,
+        guestPhone: fullPhone
+      })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (state.introName) {
+        state.existingGuestName = state.introName;
+      }
+      state.introSubmitted = true;
+      state.showIntroForm = false;
+      renderMessages();
+    })
+    .catch(function(error) {
+      console.error('WhizChat intro submit error:', error);
+    });
+  }
+
+  // Detect country code on init
+  function detectCountryCode() {
+    fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.country_calling_code) {
+          state.countryCode = data.country_calling_code;
+        }
+      })
+      .catch(function() {
+        // Silent fail - keep default
+      });
+  }
+
   // Send message
   function sendMessage(content) {
     if (!content.trim() || !state.conversationId || state.isSending) return;
+
+    // Check if this is the first message from an anonymous user
+    var customerMessages = state.messages.filter(function(m) { return m.senderType === 'customer'; });
+    var isFirstMessage = customerMessages.length === 0;
+    var isAnonymousUser = !wpUserId;
 
     // Clear typing status when sending message
     if (typingTimeout) {
@@ -2172,7 +2406,7 @@
       id: clientMessageId,
       content: content,
       senderType: 'customer',
-      senderName: null,
+      senderName: state.introName || null,
       source: 'widget',
       createdAt: new Date().toISOString(),
       replyToId: replyingTo ? replyingTo.id : null,
@@ -2195,6 +2429,12 @@
     state.isSending = true;
     document.getElementById('whizchat-input').value = '';
     cancelReply(); // Clear reply state
+
+    // Show intro form after first message for anonymous users
+    if (isFirstMessage && isAnonymousUser && !state.introSubmitted && !state.existingGuestName) {
+      state.showIntroForm = true;
+    }
+
     renderMessages();
     renderFAQ();
 
@@ -2667,7 +2907,10 @@
     window.addEventListener('beforeunload', sendLeaveNotification);
     window.addEventListener('pagehide', sendLeaveNotification);
 
-    console.log('WhizChat widget v' + WIDGET_VERSION + ' initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ', bg: ' + widgetConfig.chatBackground + ')');
+    // Detect country code for phone input
+    detectCountryCode();
+
+    console.log('WhizChat widget initialized (lang: ' + widgetConfig.language + ', theme: ' + widgetConfig.theme + ', bg: ' + widgetConfig.chatBackground + ')');
   }
 
   // Start when DOM is ready

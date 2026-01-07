@@ -526,9 +526,7 @@ export function ChatWidget({ config = {}, apiUrl = "" }: ChatWidgetProps) {
     sendTypingStatus(false); // Stop typing indicator when sending
 
     // Show intro form after first message for anonymous users who haven't submitted yet
-    console.log("Intro form check:", { isFirstMessage, isAnonymousUser, introSubmitted, existingGuestName, wpUserId });
     if (isFirstMessage && isAnonymousUser && !introSubmitted && !existingGuestName) {
-      console.log("Showing intro form!");
       setShowIntroForm(true);
     }
 
