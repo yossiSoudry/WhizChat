@@ -58,16 +58,13 @@ function ConversationSkeleton() {
   return (
     <div className="p-4 animate-pulse">
       <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-full skeleton" />
-        <div className="flex-1 space-y-2">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-muted to-muted/50" />
+        <div className="flex-1 space-y-2.5">
           <div className="flex items-center justify-between">
-            <div className="h-4 w-24 skeleton" />
-            <div className="h-3 w-12 skeleton" />
+            <div className="h-4 w-28 rounded-md bg-gradient-to-r from-muted to-muted/50" />
+            <div className="h-3 w-14 rounded-md bg-muted/60" />
           </div>
-          <div className="h-3 w-full skeleton" />
-          <div className="flex gap-2">
-            <div className="h-5 w-14 rounded-full skeleton" />
-          </div>
+          <div className="h-3.5 w-4/5 rounded-md bg-gradient-to-r from-muted to-transparent" />
         </div>
       </div>
     </div>
@@ -97,11 +94,11 @@ export function ConversationList({
       {/* List */}
       {conversations.length === 0 ? (
         <Fade inView>
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <Inbox className="w-7 h-7 text-muted-foreground" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-5 shadow-sm">
+              <Inbox className="w-9 h-9 text-primary/60" />
             </div>
-            <h3 className="font-medium text-foreground mb-1">
+            <h3 className="font-semibold text-foreground mb-1.5 text-lg">
               אין שיחות
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -111,30 +108,37 @@ export function ConversationList({
         </Fade>
       ) : (
         <ScrollArea className="flex-1 min-h-0">
-          <div className="border-t border-border">
+          <div className="py-1">
             {conversations.map((conv, index) => (
               <Fade key={conv.id} delay={index * 30} inView>
                 <button
                   onClick={() => onSelect(conv.id)}
                   className={cn(
-                    "w-full px-4 py-3 text-right transition-all duration-150 border-b border-border",
-                    "hover:bg-muted/50 focus:outline-none focus:bg-muted/50",
-                    selectedId === conv.id && "bg-muted/80"
+                    "group w-full px-3 py-3 text-right transition-all duration-200 relative",
+                    "hover:bg-muted/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:ring-inset",
+                    selectedId === conv.id
+                      ? "bg-primary/5 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:bg-primary before:rounded-l-full"
+                      : "hover:before:absolute hover:before:right-0 hover:before:top-2 hover:before:bottom-2 hover:before:w-[3px] hover:before:bg-primary/30 hover:before:rounded-l-full"
                   )}
                 >
                   <div className="flex items-start gap-3 overflow-hidden">
                     {/* Right side (in RTL) - Avatar */}
                     <div className="relative shrink-0">
-                      <Avatar className="w-11 h-11 border-2 border-background shadow-sm">
+                      <Avatar className={cn(
+                        "w-12 h-12 ring-2 ring-offset-2 ring-offset-background transition-all duration-200",
+                        selectedId === conv.id
+                          ? "ring-primary/30"
+                          : "ring-transparent group-hover:ring-primary/20"
+                      )}>
                         {conv.customerAvatar && (
                           <AvatarImage src={conv.customerAvatar} alt={conv.customerName} />
                         )}
                         <AvatarFallback
                           className={cn(
-                            "text-sm font-medium",
+                            "text-sm font-semibold",
                             conv.customerType === "wordpress"
-                              ? "bg-primary/10 text-primary"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-gradient-to-br from-primary/20 to-primary/10 text-primary"
+                              : "bg-gradient-to-br from-muted to-muted/50 text-muted-foreground"
                           )}
                         >
                           {conv.customerName.charAt(0).toUpperCase()}
@@ -143,7 +147,7 @@ export function ConversationList({
 
                       {/* Online status dot */}
                       {conv.isCustomerOnline && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full status-online border-2 border-background" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-[2.5px] border-background shadow-sm shadow-emerald-500/50 animate-pulse" />
                       )}
                     </div>
 
@@ -152,44 +156,50 @@ export function ConversationList({
                       {/* First row: Name + badges + time */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-medium text-sm truncate text-foreground">
+                          <span className={cn(
+                            "font-semibold text-sm truncate transition-colors",
+                            conv.unreadCount > 0 ? "text-foreground" : "text-foreground/90"
+                          )}>
                             {conv.customerName}
                           </span>
                           {conv.customerType === "wordpress" && (
                             <Badge
                               variant="secondary"
-                              className="h-4 text-[9px] px-1 gap-0.5 bg-primary/5 text-primary border-0 shrink-0"
+                              className="h-[18px] text-[9px] px-1.5 gap-0.5 bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-0 shrink-0 font-medium"
                             >
-                              <User className="w-2 h-2" />
+                              <User className="w-2.5 h-2.5" />
                               רשום
                             </Badge>
                           )}
                           {conv.status === "closed" && (
                             <Badge
                               variant="outline"
-                              className="h-4 text-[9px] px-1.5 shrink-0"
+                              className="h-[18px] text-[9px] px-1.5 shrink-0 opacity-70"
                             >
                               סגור
                             </Badge>
                           )}
                           {conv.movedToWhatsapp && (
                             <Badge
-                              className="h-4 text-[9px] px-1.5 bg-emerald-500/10 text-emerald-600 border-0 shrink-0"
+                              className="h-[18px] text-[9px] px-1.5 bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 text-emerald-600 border-0 shrink-0 font-medium"
                             >
                               WA
                             </Badge>
                           )}
                         </div>
                         {conv.lastMessageAt && (
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                          <span className={cn(
+                            "text-[11px] whitespace-nowrap shrink-0 transition-colors",
+                            conv.unreadCount > 0 ? "text-primary font-medium" : "text-muted-foreground"
+                          )}>
                             {formatRelativeTime(conv.lastMessageAt)}
                           </span>
                         )}
                       </div>
 
                       {/* Second row: Message preview + unread count */}
-                      <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <div className="flex items-center gap-1">
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           {/* Show status only for agent messages */}
                           {conv.lastMessageSenderType === "agent" && (
                             <MessageStatusIndicator status={conv.lastMessageStatus} />
@@ -198,7 +208,7 @@ export function ConversationList({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className={cn(
-                                  "text-[13px] cursor-default",
+                                  "text-[13px] cursor-default truncate",
                                   conv.unreadCount > 0
                                     ? "text-foreground font-medium"
                                     : "text-muted-foreground"
@@ -212,7 +222,7 @@ export function ConversationList({
                             </Tooltip>
                           ) : (
                             <span className={cn(
-                              "text-[13px]",
+                              "text-[13px] truncate",
                               conv.unreadCount > 0
                                 ? "text-foreground font-medium"
                                 : "text-muted-foreground"
@@ -222,7 +232,7 @@ export function ConversationList({
                           )}
                         </div>
                         {conv.unreadCount > 0 && (
-                          <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-medium shrink-0">
+                          <span className="flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-[10px] font-bold shrink-0 shadow-sm shadow-primary/30">
                             {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
                           </span>
                         )}

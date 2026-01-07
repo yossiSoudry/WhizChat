@@ -166,10 +166,10 @@ function TypingIndicator() {
   return (
     <Fade inView inViewOnce={false}>
       <div className="flex items-center gap-1 px-4 py-2">
-        <div className="flex items-center gap-1 bg-muted rounded-full px-3 py-2">
-          <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '200ms' }} />
-          <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '400ms' }} />
+        <div className="flex items-center gap-1.5 bg-gradient-to-r from-muted to-muted/80 rounded-2xl px-4 py-2.5 shadow-sm">
+          <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '0ms' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '200ms' }} />
+          <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '400ms' }} />
         </div>
       </div>
     </Fade>
@@ -197,17 +197,22 @@ function MessageStatus({ status }: { status: "sent" | "delivered" | "read" }) {
 function ChatViewSkeleton() {
   return (
     <div className="flex flex-col h-full bg-background animate-pulse">
-      <div className="h-16 border-b bg-card flex items-center gap-3 px-4">
-        <div className="w-10 h-10 rounded-full skeleton" />
-        <div className="space-y-2">
-          <div className="h-4 w-32 skeleton" />
-          <div className="h-3 w-24 skeleton" />
+      <div className="h-[72px] border-b bg-card flex items-center gap-3 px-4">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-muted to-muted/50" />
+        <div className="space-y-2.5 flex-1">
+          <div className="h-4 w-36 rounded-md bg-gradient-to-r from-muted to-muted/50" />
+          <div className="h-3 w-28 rounded-md bg-muted/60" />
         </div>
       </div>
-      <div className="flex-1 p-4 space-y-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="flex-1 p-6 space-y-5">
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className={cn("flex", i % 2 === 0 ? "justify-start" : "justify-end")}>
-            <div className={cn("skeleton rounded-2xl", i % 2 === 0 ? "w-48 h-16" : "w-64 h-12")} />
+            <div className={cn(
+              "rounded-2xl bg-gradient-to-r",
+              i % 2 === 0
+                ? "w-52 h-14 from-muted to-muted/50"
+                : "w-72 h-12 from-primary/20 to-primary/10"
+            )} />
           </div>
         ))}
       </div>
@@ -812,11 +817,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   return (
     <div className="flex flex-col h-full bg-background relative">
       {/* Header */}
-      <div className="flex items-center justify-between border-b bg-card">
+      <div className="flex items-center justify-between border-b bg-gradient-to-l from-card via-card to-card/95 shadow-sm">
         {/* Clickable area - opens profile drawer */}
         <button
           onClick={() => setShowProfileDrawer(true)}
-          className="flex-1 flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer text-right"
+          className="group flex-1 flex items-center gap-3 px-4 py-3.5 hover:bg-muted/40 transition-all duration-200 cursor-pointer text-right"
         >
           {/* Back button for mobile */}
           {showBackButton && (
@@ -825,46 +830,52 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 e.stopPropagation();
                 onClose();
               }}
-              className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors"
+              className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center hover:bg-muted hover:scale-105 transition-all duration-200"
             >
               <ArrowRight className="w-5 h-5 text-muted-foreground" />
             </div>
           )}
           <div className="relative">
-            <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
+            <Avatar className={cn(
+              "w-11 h-11 ring-2 ring-offset-2 ring-offset-card transition-all duration-200",
+              customerIsOnline ? "ring-emerald-500/40" : "ring-transparent group-hover:ring-primary/20"
+            )}>
               {conversation.customerAvatar && (
                 <AvatarImage src={conversation.customerAvatar} alt={conversation.customerName} />
               )}
-              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
                 {conversation.customerName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             {customerIsOnline && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full status-online border-2 border-card" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-[2.5px] border-card shadow-sm shadow-emerald-500/50 animate-pulse" />
             )}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
                 {conversation.customerName}
               </span>
               {conversation.customerType === "wordpress" && (
-                <Badge variant="secondary" className="h-5 text-[10px] px-1.5 gap-1 bg-primary/5 text-primary border-0">
+                <Badge variant="secondary" className="h-5 text-[10px] px-1.5 gap-1 bg-gradient-to-r from-primary/10 to-primary/5 text-primary border-0 font-medium">
                   <User className="w-2.5 h-2.5" />
                   רשום
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm">
               {customerIsOnline ? (
-                <span className="text-emerald-500 font-medium">מחובר עכשיו</span>
+                <span className="text-emerald-500 font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  מחובר עכשיו
+                </span>
               ) : conversation.customerEmail ? (
-                <span>{conversation.customerEmail}</span>
+                <span className="text-muted-foreground">{conversation.customerEmail}</span>
               ) : (
-                <span className="text-muted-foreground">לא מחובר</span>
+                <span className="text-muted-foreground/70">לא מחובר</span>
               )}
               {conversation.status === "closed" && (
-                <Badge variant="outline" className="h-4 text-[10px] px-1.5">
+                <Badge variant="outline" className="h-4 text-[10px] px-1.5 opacity-70">
                   סגור
                 </Badge>
               )}
@@ -1022,8 +1033,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
               >
                 {/* Date separator */}
                 {showDateSeparator && (
-                  <div className="flex items-center justify-center my-4">
-                    <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                  <div className="flex items-center justify-center my-6">
+                    <span className="text-xs font-medium text-muted-foreground bg-gradient-to-r from-muted/80 to-muted/60 px-4 py-1.5 rounded-full shadow-sm border border-border/50">
                       {formatDateSeparator(message.createdAt)}
                     </span>
                   </div>
@@ -1076,10 +1087,10 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                           className={cn(
                             "rounded-2xl transition-all",
                             // Smaller padding for images, normal for text/files
-                            isImageMessage ? "p-1.5" : isFileMessage ? "p-2" : "px-4 py-2.5",
-                            isAgent && "bg-brand-gradient text-white rounded-tr-sm shadow-sm",
-                            isCustomer && "bg-card border border-border rounded-tl-sm",
-                            isSystem && "bg-muted/70 text-muted-foreground text-center text-sm px-4 py-2",
+                            isImageMessage ? "p-1.5" : isFileMessage ? "p-2.5" : "px-4 py-3",
+                            isAgent && "bg-brand-gradient text-white rounded-tr-md shadow-md shadow-primary/20",
+                            isCustomer && "bg-card border border-border/80 rounded-tl-md shadow-sm hover:shadow-md transition-shadow",
+                            isSystem && "bg-gradient-to-r from-muted/80 to-muted/60 text-muted-foreground text-center text-sm px-5 py-2.5 rounded-xl border border-border/50",
                             // Highlight search results
                             isCurrentSearchResult && "ring-2 ring-yellow-400 ring-offset-2",
                             isSearchResult && !isCurrentSearchResult && "ring-1 ring-yellow-300/50"
@@ -1233,16 +1244,16 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           {customerIsTyping && (
             <Fade inView inViewOnce={false}>
               <div className="flex items-center gap-2 justify-end px-4">
-                <div className="flex items-center gap-1 bg-muted rounded-full px-3 py-2">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '200ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-typing-dot" style={{ animationDelay: '400ms' }} />
+                <div className="flex items-center gap-1.5 bg-gradient-to-r from-muted to-muted/80 rounded-2xl px-4 py-2.5 shadow-sm">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '200ms' }} />
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary to-primary/80 animate-typing-dot shadow-sm" style={{ animationDelay: '400ms' }} />
                 </div>
-                <Avatar className="w-8 h-8 border border-border">
+                <Avatar className="w-8 h-8 ring-1 ring-border">
                   {conversation?.customerAvatar && (
                     <AvatarImage src={conversation.customerAvatar} alt={conversation.customerName} />
                   )}
-                  <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                  <AvatarFallback className="text-xs bg-gradient-to-br from-muted to-muted/50 text-muted-foreground">
                     {conversation?.customerName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -1258,9 +1269,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           <TooltipTrigger asChild>
             <button
               onClick={() => scrollToBottom(true)}
-              className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card border border-border rounded-full p-2 shadow-lg hover:shadow-xl transition-all hover:scale-105 animate-fade-in"
+              className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm border border-border/80 rounded-full p-2.5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 hover:bg-card animate-fade-in"
             >
-              <ArrowDownCircle className="w-5 h-5 text-muted-foreground" />
+              <ArrowDownCircle className="w-5 h-5 text-primary" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">גלול למטה</TooltipContent>
@@ -1269,7 +1280,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
 
       {/* Floating Input */}
       {conversation.status !== "closed" && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pt-8">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/95 to-transparent pt-10">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1279,8 +1290,8 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
           >
             {/* Reply bar */}
             {replyingTo && (
-              <div className="flex items-stretch gap-2 mb-2 px-3 py-2 bg-card border border-border rounded-xl shadow-sm animate-fade-in">
-                <div className="w-1 bg-primary rounded-full flex-shrink-0" />
+              <div className="flex items-stretch gap-2 mb-3 px-3 py-2.5 bg-card/95 backdrop-blur-sm border border-border/80 rounded-xl shadow-md animate-fade-in">
+                <div className="w-1 bg-gradient-to-b from-primary to-primary/70 rounded-full flex-shrink-0" />
                 {/* Image thumbnail for image replies */}
                 {replyingTo.messageType === "image" && replyingTo.fileUrl && (
                   <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
@@ -1316,7 +1327,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 </Button>
               </div>
             )}
-            <div className="relative flex items-center bg-card border border-border rounded-2xl shadow-lg">
+            <div className="relative flex items-center bg-card/95 backdrop-blur-sm border border-border/80 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30">
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
@@ -1384,7 +1395,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                     type="submit"
                     disabled={isSending || !newMessage.trim()}
                     size="icon"
-                    className="h-10 w-10 rounded-xl bg-brand-gradient hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="h-10 w-10 rounded-xl bg-brand-gradient hover:opacity-90 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:hover:scale-100 shadow-md shadow-primary/25"
                   >
                     <Send className="w-5 h-5" />
                   </Button>
