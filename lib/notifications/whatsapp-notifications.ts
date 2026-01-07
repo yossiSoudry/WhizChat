@@ -7,13 +7,14 @@ interface NotifyOptions {
   conversationId: string;
   customerName: string;
   messagePreview: string;
+  customerPhone?: string;
 }
 
 /**
  * Send WhatsApp notifications to all agents who have notifications enabled
  */
 export async function notifyAgentsOnNewMessage(options: NotifyOptions): Promise<void> {
-  const { conversationId, customerName, messagePreview } = options;
+  const { conversationId, customerName, messagePreview, customerPhone } = options;
 
   try {
     // Get WhatsApp settings
@@ -62,6 +63,17 @@ export async function notifyAgentsOnNewMessage(options: NotifyOptions): Promise<
       ? messagePreview.slice(0, 100) + "..."
       : messagePreview;
 
+    // Build customer WhatsApp link if phone is available
+    let customerWhatsAppSection = "";
+    if (customerPhone) {
+      const cleanCustomerPhone = customerPhone.replace(/\D/g, "");
+      const prefilledMessage = encodeURIComponent(
+        "Hello, I'm reaching out from support regarding your inquiry. How may I assist you?"
+      );
+      const customerWhatsAppLink = `https://wa.me/${cleanCustomerPhone}?text=${prefilledMessage}`;
+      customerWhatsAppSection = `\n📱 להגיב ישירות בוואטסאפ:\n${customerWhatsAppLink}\n`;
+    }
+
     // Send notification to each agent
     const sendPromises = agentsToNotify.map(async (agent) => {
       if (!agent.phone) return;
@@ -72,8 +84,8 @@ export async function notifyAgentsOnNewMessage(options: NotifyOptions): Promise<
 
 👤 מ: ${customerName}
 💬 "${truncatedPreview}"
-
-לצפייה והגבה:
+${customerWhatsAppSection}
+💻 לצפייה בדשבורד:
 ${chatUrl}`;
 
       try {

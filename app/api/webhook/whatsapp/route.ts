@@ -181,6 +181,7 @@ async function handleIncomingMessage(body: {
           conversationId: conversation.id,
           customerName,
           messagePreview: messageText,
+          customerPhone: conversation.waPhone || undefined,
         }).catch((error) => {
           console.error("Failed to send WhatsApp notifications:", error);
         });
