@@ -383,47 +383,90 @@
       }
 
       .whizchat-button {
-        width: 60px;
-        height: 60px;
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         border: none;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow:
+          0 4px 15px rgba(192, 38, 211, 0.4),
+          0 8px 30px rgba(0, 0, 0, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        overflow: visible;
+      }
+
+      .whizchat-button::before {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
+        opacity: 0;
+        z-index: -1;
+        transition: opacity 0.3s ease;
+        filter: blur(8px);
       }
 
       .whizchat-button:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        transform: scale(1.08) translateY(-2px);
+        box-shadow:
+          0 8px 25px rgba(192, 38, 211, 0.5),
+          0 12px 40px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
+
+      .whizchat-button:hover::before {
+        opacity: 0.6;
+      }
+
+      .whizchat-button:active {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
       }
 
       .whizchat-button svg {
         width: 28px;
         height: 28px;
         fill: white;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+        transition: transform 0.3s ease;
+      }
+
+      .whizchat-button:hover svg {
+        transform: scale(1.05);
       }
 
       .whizchat-window {
         position: absolute;
-        bottom: 70px;
+        bottom: 80px;
         right: 0;
-        width: 380px;
-        height: 500px;
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        width: 400px;
+        height: 560px;
+        background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+        border-radius: 24px;
+        box-shadow:
+          0 25px 50px -12px rgba(0, 0, 0, 0.25),
+          0 0 0 1px rgba(0, 0, 0, 0.05),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
         display: none;
         flex-direction: column;
         overflow: hidden;
-        animation: whizchat-slideUp 0.3s ease-out;
+        animation: whizchat-slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: bottom right;
       }
 
       .whizchat-window.open {
         display: flex;
+      }
+
+      .position-left .whizchat-window {
+        transform-origin: bottom left;
       }
 
       .position-left .whizchat-window {
@@ -437,17 +480,43 @@
       }
 
       @keyframes whizchat-slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
       }
 
       .whizchat-header {
-        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        padding: 16px;
+        padding: 18px 20px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .whizchat-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+          radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 40%);
+        pointer-events: none;
+      }
+
+      .whizchat-header > * {
+        position: relative;
+        z-index: 1;
       }
 
       /* WhatsApp Pinned Banner */
@@ -487,83 +556,151 @@
       }
 
       .whizchat-header-title {
-        font-weight: 600;
-        font-size: 16px;
+        font-weight: 700;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       }
 
       .whizchat-header-status {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         font-size: 13px;
-        opacity: 0.9;
+        opacity: 0.95;
+        font-weight: 500;
       }
 
       .whizchat-status-dot {
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
         background: #4ade80;
+        box-shadow:
+          0 0 0 2px rgba(74, 222, 128, 0.3),
+          0 0 8px rgba(74, 222, 128, 0.5);
+        animation: whizchat-status-pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes whizchat-status-pulse {
+        0%, 100% {
+          box-shadow:
+            0 0 0 2px rgba(74, 222, 128, 0.3),
+            0 0 8px rgba(74, 222, 128, 0.5);
+        }
+        50% {
+          box-shadow:
+            0 0 0 4px rgba(74, 222, 128, 0.2),
+            0 0 12px rgba(74, 222, 128, 0.6);
+        }
       }
 
       .whizchat-status-dot.offline {
         background: #f87171;
+        box-shadow: none;
+        animation: none;
       }
 
       .whizchat-close {
-        background: none;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
         color: white;
         cursor: pointer;
-        padding: 4px;
+        padding: 6px;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+      }
+
+      .whizchat-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
+      }
+
+      .whizchat-close:active {
+        transform: scale(0.95);
       }
 
       .whizchat-messages {
         flex: 1;
         overflow-y: auto;
-        padding: 16px;
+        padding: 20px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
+        scroll-behavior: smooth;
+      }
+
+      /* Custom scrollbar for messages */
+      .whizchat-messages::-webkit-scrollbar {
+        width: 5px;
+      }
+
+      .whizchat-messages::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .whizchat-messages::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
+      }
+
+      .whizchat-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.25);
       }
 
       .whizchat-message {
-        padding: 10px 14px;
-        border-radius: 16px;
-        font-size: 14px;
-        line-height: 1.4;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14.5px;
+        line-height: 1.5;
+        position: relative;
+        word-wrap: break-word;
       }
 
       @keyframes whizchat-fadeIn {
-        from { opacity: 0; transform: translateY(5px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
       }
 
       .whizchat-message.customer {
-        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        border-bottom-right-radius: 4px;
+        border-bottom-right-radius: 6px;
+        box-shadow:
+          0 2px 8px rgba(192, 38, 211, 0.25),
+          0 1px 3px rgba(0, 0, 0, 0.1);
       }
 
       .whizchat-message.agent,
       .whizchat-message.bot {
-        background: #f3f4f6;
+        background: #f8f9fa;
         color: #1f2937;
-        border-bottom-left-radius: 4px;
+        border-bottom-left-radius: 6px;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       }
 
       .whizchat-message.system {
-        background: #fef3c7;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
         color: #92400e;
         text-align: center;
         font-size: 13px;
+        border-radius: 12px;
+        padding: 10px 16px;
+        border: 1px solid rgba(251, 191, 36, 0.3);
       }
 
       .whizchat-message-wrapper {
         display: flex;
         flex-direction: column;
-        max-width: 80%;
-        animation: whizchat-fadeIn 0.2s ease-out;
+        max-width: 82%;
+        animation: whizchat-fadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
       .whizchat-message-wrapper.customer {
@@ -580,6 +717,7 @@
       .whizchat-message-wrapper.system {
         align-self: center;
         align-items: center;
+        max-width: 90%;
       }
 
       /* Agent avatar container (on side of message) */
@@ -660,45 +798,56 @@
       }
 
       .whizchat-faq {
-        padding: 12px 16px;
-        border-top: 1px solid #e5e7eb;
-        background: #f9fafb;
+        padding: 14px 20px;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        background: linear-gradient(180deg, #f8f9fa 0%, #f3f4f6 100%);
       }
 
       .whizchat-faq-title {
         font-size: 12px;
+        font-weight: 600;
         color: #6b7280;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
 
       .whizchat-faq-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 8px;
       }
 
       .whizchat-faq-item {
         background: white;
-        border: 1px solid #e5e7eb;
+        border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: 20px;
-        padding: 6px 12px;
+        padding: 8px 14px;
         font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
       }
 
       .whizchat-faq-item:hover {
-        background: var(--widget-primary);
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        border-color: var(--widget-primary);
+        border-color: transparent;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(192, 38, 211, 0.3);
       }
 
-      /* Floating input bar - no background */
+      .whizchat-faq-item:active {
+        transform: translateY(0) scale(0.98);
+      }
+
+      /* Floating input bar - subtle gradient background */
       .whizchat-input-area {
-        padding: 8px 12px 12px;
-        background: transparent;
+        padding: 12px 16px 16px;
+        background: linear-gradient(180deg, transparent 0%, rgba(248, 249, 250, 0.8) 100%);
         display: flex;
-        gap: 8px;
+        gap: 10px;
         align-items: center;
         position: relative;
       }
@@ -709,11 +858,19 @@
         display: flex;
         align-items: center;
         background: white;
-        border-radius: 24px;
-        padding: 4px 12px 4px 4px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-        min-height: 48px;
-        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: 28px;
+        padding: 4px 14px 4px 6px;
+        box-shadow:
+          0 2px 8px rgba(0, 0, 0, 0.08),
+          0 0 0 1px rgba(0, 0, 0, 0.04);
+        min-height: 52px;
+        transition: all 0.2s ease;
+      }
+
+      .whizchat-input-container:focus-within {
+        box-shadow:
+          0 4px 16px rgba(192, 38, 211, 0.15),
+          0 0 0 2px rgba(192, 38, 211, 0.2);
       }
 
       /* Action buttons inside unified container */
@@ -721,20 +878,21 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #54656f;
-        transition: all 0.15s ease;
+        color: #6b7280;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         flex-shrink: 0;
       }
 
       .whizchat-action-btn:hover {
-        background: #f0f2f5;
+        background: rgba(192, 38, 211, 0.08);
         color: var(--widget-primary);
+        transform: scale(1.08);
       }
 
       .whizchat-action-btn:active {
@@ -744,6 +902,7 @@
       .whizchat-action-btn svg {
         width: 22px;
         height: 22px;
+        transition: transform 0.2s ease;
       }
 
       /* Emoji Picker */
@@ -816,32 +975,55 @@
 
       /* Send button - outside the container like WhatsApp */
       .whizchat-send-outer {
-        background: linear-gradient(135deg, var(--widget-primary), var(--widget-secondary));
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         border: none;
         border-radius: 50%;
-        width: 48px;
-        height: 48px;
+        width: 52px;
+        height: 52px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.15s ease;
+        transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         flex-shrink: 0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        box-shadow:
+          0 4px 15px rgba(192, 38, 211, 0.35),
+          0 2px 6px rgba(0, 0, 0, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .whizchat-send-outer::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(145deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+        opacity: 0;
+        transition: opacity 0.2s ease;
       }
 
       .whizchat-send-outer:hover:not(:disabled) {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transform: scale(1.1) translateY(-2px);
+        box-shadow:
+          0 8px 25px rgba(192, 38, 211, 0.45),
+          0 4px 10px rgba(0, 0, 0, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
+
+      .whizchat-send-outer:hover:not(:disabled)::before {
+        opacity: 1;
       }
 
       .whizchat-send-outer:active:not(:disabled) {
         transform: scale(0.95);
+        transition: transform 0.1s ease;
       }
 
       .whizchat-send-outer:disabled {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       }
 
       .whizchat-send-outer svg {
@@ -849,6 +1031,12 @@
         height: 22px;
         fill: white;
         margin-left: 2px;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
+        transition: transform 0.2s ease;
+      }
+
+      .whizchat-send-outer:hover:not(:disabled) svg {
+        transform: translateX(2px);
       }
 
       .whizchat-send-outer:focus {
@@ -1179,26 +1367,40 @@
 
       .whizchat-unread-badge {
         position: absolute;
-        top: -6px;
-        right: -6px;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 6px;
-        border-radius: 10px;
-        background: #ef4444;
+        top: -8px;
+        right: -8px;
+        min-width: 24px;
+        height: 24px;
+        padding: 0 7px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, #ef4444, #dc2626);
         color: white;
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 2px solid white;
-        animation: whizchat-pulse 2s infinite;
+        border: 3px solid white;
+        box-shadow:
+          0 2px 8px rgba(239, 68, 68, 0.5),
+          0 1px 3px rgba(0, 0, 0, 0.15);
+        animation: whizchat-badge-pulse 2s ease-in-out infinite;
+        z-index: 10;
       }
 
-      @keyframes whizchat-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
+      @keyframes whizchat-badge-pulse {
+        0%, 100% {
+          transform: scale(1);
+          box-shadow:
+            0 2px 8px rgba(239, 68, 68, 0.5),
+            0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        50% {
+          transform: scale(1.15);
+          box-shadow:
+            0 4px 15px rgba(239, 68, 68, 0.6),
+            0 2px 6px rgba(0, 0, 0, 0.2);
+        }
       }
 
       /* Date separator */
@@ -1206,19 +1408,21 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 8px 0;
+        padding: 12px 0;
         margin: 8px 0;
       }
 
       .whizchat-date-separator span {
         display: inline-block;
-        background: #f3f4f6;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f3f4f6 100%);
         color: #6b7280;
         font-size: 11px;
-        font-weight: 500;
-        padding: 4px 12px;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        letter-spacing: 0.3px;
       }
 
       /* Reply bar above input */
@@ -1526,18 +1730,31 @@
 
       /* ==================== DARK MODE STYLES ==================== */
       .whizchat-widget.theme-dark .whizchat-window {
-        background: #1f2937;
-        border: 1px solid #374151;
+        background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow:
+          0 25px 50px -12px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.05);
       }
 
       .whizchat-widget.theme-dark .whizchat-messages {
-        background: #111827;
+        background: #0f172a;
+      }
+
+      .whizchat-widget.theme-dark .whizchat-messages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .whizchat-widget.theme-dark .whizchat-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
       }
 
       .whizchat-widget.theme-dark .whizchat-message.agent,
       .whizchat-widget.theme-dark .whizchat-message.bot {
-        background: #374151;
+        background: linear-gradient(145deg, #374151 0%, #3f4a5c 100%);
         color: #f3f4f6;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       }
 
       .whizchat-widget.theme-dark .whizchat-message.system {
@@ -1563,20 +1780,29 @@
       }
 
       .whizchat-widget.theme-dark .whizchat-faq-item {
-        background: #374151;
-        border-color: #4b5563;
+        background: linear-gradient(145deg, #374151 0%, #3f4a5c 100%);
+        border-color: rgba(255, 255, 255, 0.08);
         color: #f3f4f6;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       }
 
       .whizchat-widget.theme-dark .whizchat-faq-item:hover {
-        background: var(--widget-primary);
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         color: white;
-        border-color: var(--widget-primary);
+        border-color: transparent;
+        box-shadow: 0 4px 15px rgba(192, 38, 211, 0.4);
       }
 
       .whizchat-widget.theme-dark .whizchat-input-container {
-        background: #374151;
-        border-color: #4b5563;
+        background: linear-gradient(145deg, #374151 0%, #3f4a5c 100%);
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .whizchat-widget.theme-dark .whizchat-input-container:focus-within {
+        box-shadow:
+          0 4px 16px rgba(192, 38, 211, 0.25),
+          0 0 0 2px rgba(192, 38, 211, 0.3);
       }
 
       .whizchat-widget.theme-dark .whizchat-input {
@@ -1641,9 +1867,10 @@
       }
 
       .whizchat-widget.theme-dark .whizchat-date-separator span {
-        background: #374151;
+        background: linear-gradient(135deg, #374151 0%, #3f4a5c 100%);
         color: #9ca3af;
-        border-color: #4b5563;
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       }
 
       .whizchat-widget.theme-dark .whizchat-emoji-picker {
@@ -1688,19 +1915,22 @@
       .whizchat-typing-dots {
         display: flex;
         align-items: center;
-        gap: 4px;
-        padding: 12px 16px;
-        background: #f3f4f6;
-        border-radius: 16px;
-        border-bottom-left-radius: 4px;
+        gap: 5px;
+        padding: 14px 18px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f3f4f6 100%);
+        border-radius: 20px;
+        border-bottom-left-radius: 6px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        animation: whizchat-fadeIn 0.3s ease-out;
       }
 
       .whizchat-typing-dots span {
-        width: 8px;
-        height: 8px;
-        background: #9ca3af;
+        width: 9px;
+        height: 9px;
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
         border-radius: 50%;
         animation: whizchat-typing-bounce 1.4s infinite ease-in-out both;
+        box-shadow: 0 1px 3px rgba(192, 38, 211, 0.3);
       }
 
       .whizchat-typing-dots span:nth-child(1) {
@@ -1717,21 +1947,21 @@
 
       @keyframes whizchat-typing-bounce {
         0%, 80%, 100% {
-          transform: scale(0.6);
-          opacity: 0.5;
+          transform: scale(0.65) translateY(0);
+          opacity: 0.4;
         }
         40% {
-          transform: scale(1);
+          transform: scale(1) translateY(-4px);
           opacity: 1;
         }
       }
 
       .whizchat-widget.theme-dark .whizchat-typing-dots {
-        background: #374151;
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
       }
 
       .whizchat-widget.theme-dark .whizchat-typing-dots span {
-        background: #6b7280;
+        background: linear-gradient(145deg, var(--widget-primary), var(--widget-secondary));
       }
     `;
     document.head.appendChild(style);

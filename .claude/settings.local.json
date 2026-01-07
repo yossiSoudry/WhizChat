@@ -31,7 +31,10 @@
       "Bash(dir:*)",
       "Bash(npx dotenv:*)",
       "Bash(set:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout:*)",
+      "Skill(frontend-design)",
+      "Skill(frontend-design:*)"
     ]
   }
 }
