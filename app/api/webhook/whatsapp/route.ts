@@ -100,6 +100,13 @@ async function handleIncomingMessage(body: {
 }) {
   const { senderData, messageData, idMessage } = body;
 
+  // Ignore group messages - only process individual chats
+  // Group chat IDs end with @g.us, individual chats end with @c.us
+  if (senderData.chatId.includes("@g.us")) {
+    console.log("Ignoring group message from:", senderData.chatId);
+    return NextResponse.json({ ok: true });
+  }
+
   // Get message text
   const messageText =
     messageData.textMessageData?.textMessage ||
