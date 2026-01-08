@@ -97,7 +97,7 @@ export async function GET(
   }
 }
 
-// PATCH - Update conversation status
+// PATCH - Update conversation status or archive status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -105,7 +105,6 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const validatedData = updateConversationStatusSchema.parse(body);
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -117,6 +116,20 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    // Handle unarchive request
+    if (body.isArchived === false) {
+      const updated = await prisma.conversation.update({
+        where: { id },
+        data: {
+          isArchived: false,
+        },
+      });
+      return NextResponse.json({ success: true, conversation: updated });
+    }
+
+    // Handle status change
+    const validatedData = updateConversationStatusSchema.parse(body);
 
     const updated = await prisma.conversation.update({
       where: { id },
@@ -156,12 +169,15 @@ export async function PATCH(
 }
 
 // DELETE - Archive conversation and delete files from storage
+// Or permanently delete if ?permanent=true is passed
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const permanent = searchParams.get("permanent") === "true";
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -215,7 +231,31 @@ export async function DELETE(
       }
     }
 
-    // Clear file URLs from messages (set to null)
+    // Permanent deletion - delete everything from database
+    if (permanent) {
+      // Delete all messages first (due to foreign key constraint)
+      await prisma.message.deleteMany({
+        where: { conversationId: id },
+      });
+
+      // Delete all notes
+      await prisma.customerNote.deleteMany({
+        where: { conversationId: id },
+      });
+
+      // Delete the conversation
+      await prisma.conversation.delete({
+        where: { id },
+      });
+
+      return NextResponse.json({
+        success: true,
+        deletedFiles: filesWithUrls.length,
+        permanentlyDeleted: true,
+      });
+    }
+
+    // Archive only - clear file URLs from messages (set to null)
     await prisma.message.updateMany({
       where: {
         conversationId: id,

@@ -12,6 +12,7 @@ import {
   CheckCheck,
   User,
   Archive,
+  ArchiveRestore,
   Phone,
   Smile,
   ArrowDownCircle,
@@ -22,6 +23,7 @@ import {
   ChevronUp,
   ChevronDown,
   Reply,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -129,6 +131,7 @@ interface ConversationDetails {
   customerType: "wordpress" | "guest";
   contactType: "email" | "whatsapp" | "none";
   status: "active" | "closed" | "pending";
+  isArchived: boolean;
   movedToWhatsapp: boolean;
   waPhone: string | null;
   lastReadAtCustomer: string | null;
@@ -700,6 +703,50 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
     }
   }
 
+  async function handleUnarchive() {
+    try {
+      const res = await fetch(`/api/admin/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isArchived: false }),
+      });
+
+      if (res.ok) {
+        setConversation((prev) => (prev ? { ...prev, isArchived: false } : null));
+        onStatusChange?.();
+      } else {
+        const error = await res.json();
+        alert(error.error || "שגיאה בהסרה מהארכיון");
+      }
+    } catch (error) {
+      console.error("Failed to unarchive:", error);
+      alert("שגיאה בהסרה מהארכיון");
+    }
+  }
+
+  async function handlePermanentDelete() {
+    if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה לצמיתות?\nפעולה זו בלתי הפיכה!")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/conversations/${conversationId}?permanent=true`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        onStatusChange?.();
+        onClose();
+      } else {
+        const error = await res.json();
+        alert(error.error || "שגיאה במחיקת השיחה");
+      }
+    } catch (error) {
+      console.error("Failed to delete permanently:", error);
+      alert("שגיאה במחיקת השיחה");
+    }
+  }
+
   async function handleFileUpload(file: File, caption?: string) {
     if (!file || isUploading) return;
 
@@ -911,21 +958,38 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              {conversation.status === "active" ? (
-                <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
-                  <Archive className="w-4 h-4 ml-2" />
-                  סגור שיחה
-                </DropdownMenuItem>
+              {conversation.isArchived ? (
+                <>
+                  <DropdownMenuItem onClick={handleUnarchive}>
+                    <ArchiveRestore className="w-4 h-4 ml-2" />
+                    הסר מהארכיון
+                  </DropdownMenuItem>
+                  {agent?.role === "admin" && (
+                    <DropdownMenuItem onClick={handlePermanentDelete} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 ml-2" />
+                      מחק לצמיתות
+                    </DropdownMenuItem>
+                  )}
+                </>
               ) : (
-                <DropdownMenuItem onClick={() => handleStatusChange("active")}>
-                  <RotateCcw className="w-4 h-4 ml-2" />
-                  פתח מחדש
-                </DropdownMenuItem>
+                <>
+                  {conversation.status === "active" ? (
+                    <DropdownMenuItem onClick={() => handleStatusChange("closed")}>
+                      <Archive className="w-4 h-4 ml-2" />
+                      סגור שיחה
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => handleStatusChange("active")}>
+                      <RotateCcw className="w-4 h-4 ml-2" />
+                      פתח מחדש
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleArchive} className="text-orange-600 focus:text-orange-600">
+                    <Archive className="w-4 h-4 ml-2" />
+                    העבר לארכיון
+                  </DropdownMenuItem>
+                </>
               )}
-              <DropdownMenuItem onClick={handleArchive} className="text-orange-600 focus:text-orange-600">
-                <Archive className="w-4 h-4 ml-2" />
-                העבר לארכיון
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onClose} className="text-destructive focus:text-destructive">
                 <X className="w-4 h-4 ml-2" />
