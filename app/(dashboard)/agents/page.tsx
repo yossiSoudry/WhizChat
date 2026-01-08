@@ -96,12 +96,12 @@ function AgentCard({
   return (
     <Card
       className={cn(
-        "transition-all",
+        "transition-all duration-300 border-0 shadow-lg hover:shadow-xl overflow-hidden group",
         !agent.isActive && "opacity-60"
       )}
     >
       {isEditing ? (
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6 space-y-4 bg-gradient-to-br from-muted/20 to-transparent">
           {/* Avatar upload in edit mode */}
           <div className="flex justify-center">
             <AvatarUpload
@@ -174,13 +174,14 @@ function AgentCard({
           </div>
         </CardContent>
       ) : (
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+        <CardContent className="pt-6 relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-muted/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 relative">
             {/* Top row on mobile: Avatar + Actions */}
             <div className="flex items-start justify-between sm:contents">
               {/* Avatar */}
               <div className="relative shrink-0">
-                <Avatar className="size-14 border-2 border-border">
+                <Avatar className="size-14 border-2 border-border shadow-lg transition-transform group-hover:scale-105">
                   {agent.avatarUrl && <AvatarImage src={agent.avatarUrl} alt={agent.name} />}
                   <AvatarFallback className="bg-brand-gradient text-white text-lg font-medium">
                     {getInitials(agent.name)}
@@ -189,8 +190,8 @@ function AgentCard({
                 {/* Online indicator */}
                 <span
                   className={cn(
-                    "absolute bottom-0 right-0 size-4 rounded-full border-2 border-background",
-                    agent.isOnline ? "bg-emerald-500" : "bg-muted-foreground"
+                    "absolute bottom-0 right-0 size-4 rounded-full border-2 border-background shadow-sm",
+                    agent.isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
                   )}
                 />
               </div>
@@ -228,13 +229,16 @@ function AgentCard({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h3 className="font-semibold text-foreground truncate">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <h3 className="font-semibold text-foreground truncate text-lg">
                   {agent.name}
                 </h3>
                 <Badge
                   variant={agent.role === "admin" ? "default" : "secondary"}
-                  className="text-[10px] gap-1"
+                  className={cn(
+                    "text-[10px] gap-1 shadow-sm",
+                    agent.role === "admin" && "bg-gradient-to-r from-primary to-primary/80"
+                  )}
                 >
                   {agent.role === "admin" ? (
                     <>
@@ -250,26 +254,26 @@ function AgentCard({
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                <Mail className="w-3.5 h-3.5 shrink-0" />
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1 p-2 rounded-lg bg-muted/30 w-fit">
+                <Mail className="w-3.5 h-3.5 shrink-0 text-primary/70" />
                 <span className="truncate" dir="ltr">{agent.email}</span>
               </div>
               {agent.phone && (
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2 p-2 rounded-lg bg-muted/30 w-fit">
+                  <Phone className="w-3.5 h-3.5 shrink-0 text-emerald-500/70" />
                   <span className="truncate" dir="ltr">{agent.phone}</span>
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-3">
+                <span className="flex items-center gap-1.5 bg-muted/20 px-2 py-1 rounded-full">
+                  <Calendar className="w-3 h-3 text-blue-500" />
                   הצטרף{" "}
                   <RelativeTimeCard date={new Date(agent.createdAt)} />
                 </span>
                 {agent.lastSeenAt && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
+                  <span className="flex items-center gap-1.5 bg-muted/20 px-2 py-1 rounded-full">
+                    <Clock className="w-3 h-3 text-amber-500" />
                     נראה לאחרונה{" "}
                     <RelativeTimeCard date={new Date(agent.lastSeenAt)} />
                   </span>
@@ -455,9 +459,14 @@ export default function AgentsPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">טוען נציגים...</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">טוען נציגים...</span>
         </div>
       </div>
     );
@@ -477,9 +486,12 @@ export default function AgentsPage() {
           {/* Header - hidden on mobile */}
           <Fade inView className="hidden md:block">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 w-12 h-12 bg-primary/30 rounded-xl blur-lg" />
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                    <Users className="w-6 h-6 text-primary-foreground" />
+                  </div>
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold">נציגים</h1>
@@ -490,7 +502,7 @@ export default function AgentsPage() {
               </div>
               {!isCreating && (
                 <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                  <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4" />
                     הוסף נציג
                   </Button>
@@ -515,23 +527,25 @@ export default function AgentsPage() {
         {agents.length > 0 && (
           <Fade inView delay={50}>
             <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shadow-md shadow-primary/10 transition-transform group-hover:scale-110">
                     <Users className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">{agents.length}</p>
                     <p className="text-xs text-muted-foreground">סה"כ נציגים</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center shadow-md shadow-emerald-500/10 transition-transform group-hover:scale-110">
                     <Eye className="w-5 h-5 text-emerald-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {agents.filter((a) => a.isOnline).length}
                     </p>
@@ -539,12 +553,13 @@ export default function AgentsPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shadow-md shadow-blue-500/10 transition-transform group-hover:scale-110">
                     <ShieldCheck className="w-5 h-5 text-blue-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {agents.filter((a) => a.role === "admin").length}
                     </p>
@@ -559,11 +574,16 @@ export default function AgentsPage() {
         {/* Create Form */}
         {isCreating && (
           <Fade inView>
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg">נציג חדש</CardTitle>
+            <Card className="border-0 shadow-xl overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-primary/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-primary" />
+                  </div>
+                  נציג חדש
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">שם</Label>
@@ -655,21 +675,27 @@ export default function AgentsPage() {
         {/* Agents List */}
         <Fade inView delay={100}>
           {agents.length === 0 && !isCreating ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-muted-foreground" />
+            <Card className="border-0 shadow-xl overflow-hidden">
+              <CardContent className="py-16 text-center relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5" />
+                <div className="relative">
+                  <div className="relative w-20 h-20 mx-auto mb-6">
+                    <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl animate-pulse" />
+                    <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border border-primary/10">
+                      <Users className="w-10 h-10 text-primary/60" />
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-foreground text-lg mb-2">אין נציגים עדיין</h3>
+                  <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+                    הוסף נציגים כדי שיוכלו לנהל את השיחות עם הלקוחות
+                  </p>
+                  <AnimateIcon animateOnHover asChild>
+                    <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20">
+                      <Plus className="w-4 h-4" />
+                      הוסף נציג ראשון
+                    </Button>
+                  </AnimateIcon>
                 </div>
-                <h3 className="font-medium text-foreground mb-1">אין נציגים עדיין</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  הוסף נציגים כדי שיוכלו לנהל את השיחות
-                </p>
-                <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    הוסף נציג ראשון
-                  </Button>
-                </AnimateIcon>
               </CardContent>
             </Card>
           ) : (
