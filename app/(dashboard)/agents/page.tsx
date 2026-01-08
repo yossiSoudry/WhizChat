@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { RelativeTimeCard } from "@/components/ui/relative-time-card";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
 import { useAgent } from "@/contexts/agent-context";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Agent {
   id: string;
@@ -323,6 +324,7 @@ export default function AgentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
     phone: string;
@@ -400,16 +402,20 @@ export default function AgentsPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("האם אתה בטוח שברצונך למחוק נציג זה?")) return;
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirmId) return;
 
     try {
-      const res = await fetch(`/api/admin/agents/${id}`, {
+      const res = await fetch(`/api/admin/agents/${deleteConfirmId}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setAgents(agents.filter((agent) => agent.id !== id));
+        setAgents(agents.filter((agent) => agent.id !== deleteConfirmId));
       }
     } catch (error) {
       console.error("Failed to delete agent:", error);
@@ -725,6 +731,18 @@ export default function AgentsPage() {
         </Fade>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="מחיקת נציג"
+        description="האם אתה בטוח שברצונך למחוק נציג זה?"
+        confirmText="מחק"
+        cancelText="ביטול"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   CropperArea,
   type CropperAreaData,
 } from "@/components/ui/cropper";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Camera, Loader2, Trash2, ZoomIn, ZoomOut, Check, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -156,6 +157,7 @@ export function AvatarUpload({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
   const [isDefaultAvatarsOpen, setIsDefaultAvatarsOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CropperAreaData | null>(null);
@@ -251,9 +253,8 @@ export function AvatarUpload({
     setZoom(1);
   }
 
-  async function handleDelete() {
+  async function handleDeleteConfirm() {
     if (!avatarUrl) return;
-    if (!confirm("האם להסיר את התמונה?")) return;
 
     setIsDeleting(true);
 
@@ -274,6 +275,11 @@ export function AvatarUpload({
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  function handleDelete() {
+    if (!avatarUrl) return;
+    setIsDeleteConfirmOpen(true);
   }
 
   async function handleSelectDefaultAvatar(avatarSrc: string) {
@@ -472,6 +478,19 @@ export function AvatarUpload({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="הסרת תמונה"
+        description="האם להסיר את התמונה?"
+        confirmText="הסר"
+        cancelText="ביטול"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        isLoading={isDeleting}
+      />
     </>
   );
 }

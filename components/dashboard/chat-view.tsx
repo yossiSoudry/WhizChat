@@ -48,6 +48,7 @@ import {
 import { FileMessage } from "./file-message";
 import { ImagePreviewModal } from "./image-preview-modal";
 import { CustomerProfileDrawer } from "./customer-profile-drawer";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import dynamic from "next/dynamic";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme } from "emoji-picker-react";
@@ -226,6 +227,7 @@ function ChatViewSkeleton() {
 export function ChatView({ conversationId, onClose, onStatusChange, onRead, showBackButton = false }: ChatViewProps) {
   const { agent } = useAgent();
   const { resolvedTheme } = useTheme();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [conversation, setConversation] = useState<ConversationDetails | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -681,9 +683,15 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   }
 
   async function handleArchive() {
-    if (!confirm("האם אתה בטוח שברצונך להעביר את השיחה לארכיון?\nכל הקבצים והתמונות ימחקו לצמיתות.")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "העברה לארכיון",
+      description: "האם אתה בטוח שברצונך להעביר את השיחה לארכיון?\nכל הקבצים והתמונות ימחקו לצמיתות.",
+      confirmText: "העבר לארכיון",
+      cancelText: "ביטול",
+      variant: "warning",
+    });
+
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/conversations/${conversationId}`, {
@@ -725,9 +733,15 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   }
 
   async function handlePermanentDelete() {
-    if (!confirm("האם אתה בטוח שברצונך למחוק את השיחה לצמיתות?\nפעולה זו בלתי הפיכה!")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "מחיקה לצמיתות",
+      description: "האם אתה בטוח שברצונך למחוק את השיחה לצמיתות?\nפעולה זו בלתי הפיכה!",
+      confirmText: "מחק לצמיתות",
+      cancelText: "ביטול",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/conversations/${conversationId}?permanent=true`, {
@@ -1509,6 +1523,9 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
         media={customerMedia}
         onNotesChange={setCustomerNotes}
       />
+
+      {/* Confirm Dialog */}
+      {ConfirmDialog}
     </div>
   );
 }

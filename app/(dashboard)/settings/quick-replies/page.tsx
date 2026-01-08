@@ -50,6 +50,7 @@ import { ChevronUp } from "@/components/animate-ui/icons/chevron-up";
 import { MessageSquareMore } from "@/components/animate-ui/icons/message-square-more";
 import { cn } from "@/lib/utils";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface QuickReply {
   id: string;
@@ -263,6 +264,7 @@ export default function QuickRepliesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -338,16 +340,20 @@ export default function QuickRepliesPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("האם אתה בטוח שברצונך למחוק תשובה מהירה זו?")) return;
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirmId) return;
 
     try {
-      const res = await fetch(`/api/admin/quick-replies/${id}`, {
+      const res = await fetch(`/api/admin/quick-replies/${deleteConfirmId}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setItems(items.filter((item) => item.id !== id));
+        setItems(items.filter((item) => item.id !== deleteConfirmId));
       }
     } catch (error) {
       console.error("Failed to delete quick reply:", error);
@@ -695,6 +701,18 @@ export default function QuickRepliesPage() {
         </Fade>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="מחיקת תשובה מהירה"
+        description="האם אתה בטוח שברצונך למחוק תשובה מהירה זו?"
+        confirmText="מחק"
+        cancelText="ביטול"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

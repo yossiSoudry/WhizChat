@@ -49,6 +49,7 @@ import { ChevronUp } from "@/components/animate-ui/icons/chevron-up";
 import { MessageCircleQuestion } from "@/components/animate-ui/icons/message-circle-question";
 import { cn } from "@/lib/utils";
 import { MobileHeader } from "@/components/dashboard/mobile-header";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface FAQItem {
   id: string;
@@ -249,6 +250,7 @@ export default function FAQPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     question: "",
     answer: "",
@@ -319,16 +321,20 @@ export default function FAQPage() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("האם אתה בטוח שברצונך למחוק שאלה זו?")) return;
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirmId) return;
 
     try {
-      const res = await fetch(`/api/admin/faq/${id}`, {
+      const res = await fetch(`/api/admin/faq/${deleteConfirmId}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setItems(items.filter((item) => item.id !== id));
+        setItems(items.filter((item) => item.id !== deleteConfirmId));
       }
     } catch (error) {
       console.error("Failed to delete FAQ item:", error);
@@ -637,6 +643,18 @@ export default function FAQPage() {
         </Fade>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="מחיקת שאלה"
+        description="האם אתה בטוח שברצונך למחוק שאלה זו?"
+        confirmText="מחק"
+        cancelText="ביטול"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
