@@ -629,8 +629,8 @@ function EmptyState() {
 
       {/* Content */}
       <Fade inView>
-        <div className="relative z-10">
-          <div className="relative mb-8 mx-auto">
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="relative mb-8">
             <div className="absolute inset-0 w-24 h-24 bg-primary/20 rounded-3xl blur-xl animate-pulse" />
             <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-xl shadow-primary/15 border border-primary/10">
               <MessageSquare className="w-12 h-12 text-primary" />
