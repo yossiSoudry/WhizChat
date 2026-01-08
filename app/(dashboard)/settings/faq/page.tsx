@@ -104,13 +104,13 @@ function SortableFAQItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-xl border bg-card transition-all",
-        isDragging && "shadow-lg ring-2 ring-primary/20 z-50",
+        "group/item rounded-xl border-0 bg-card shadow-md hover:shadow-lg transition-all duration-300",
+        isDragging && "shadow-xl ring-2 ring-primary/30 z-50 scale-[1.02]",
         !item.isActive && "opacity-60"
       )}
     >
       {isEditing ? (
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6 space-y-4 bg-gradient-to-br from-primary/5 to-transparent">
           <div className="space-y-2">
             <Label>שאלה</Label>
             <Input
@@ -158,7 +158,7 @@ function SortableFAQItem({
           <div className="flex items-start gap-3">
             {/* Drag Handle */}
             <button
-              className="mt-1 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted transition-colors"
+              className="mt-1 cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted/80 transition-colors opacity-50 group-hover/item:opacity-100"
               {...attributes}
               {...listeners}
             >
@@ -173,7 +173,7 @@ function SortableFAQItem({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <h3 className="font-medium text-foreground">
+                    <h3 className="font-medium text-foreground group-hover/item:text-primary transition-colors">
                       {item.question}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
@@ -183,25 +183,27 @@ function SortableFAQItem({
                       >
                         {item.isActive ? "פעיל" : "לא פעיל"}
                       </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded-full">
                         <MousePointerClick className="w-3 h-3" />
                         {item.clickCount}
                       </span>
                     </div>
                   </div>
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                  )}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors">
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               </button>
 
               {/* Expandable Answer */}
               {isExpanded && (
                 <Fade inView>
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-3 rounded-lg">
                       {item.answer}
                     </p>
                   </div>
@@ -210,7 +212,7 @@ function SortableFAQItem({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover/item:opacity-100 transition-opacity">
               <Switch
                 checked={item.isActive}
                 onCheckedChange={onToggleActive}
@@ -219,7 +221,7 @@ function SortableFAQItem({
                 variant="ghost"
                 size="icon"
                 onClick={onEdit}
-                className="h-8 w-8"
+                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
@@ -228,7 +230,7 @@ function SortableFAQItem({
                   variant="ghost"
                   size="icon"
                   onClick={onDelete}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash className="w-4 h-4" />
                 </Button>
@@ -401,9 +403,14 @@ export default function FAQPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">טוען שאלות נפוצות...</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">טוען שאלות נפוצות...</span>
         </div>
       </div>
     );
@@ -423,9 +430,12 @@ export default function FAQPage() {
           {/* Header - hidden on mobile */}
           <Fade inView className="hidden md:block">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <HelpCircle className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 w-12 h-12 bg-primary/30 rounded-xl blur-lg" />
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                    <HelpCircle className="w-6 h-6 text-primary-foreground" />
+                  </div>
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold">שאלות נפוצות</h1>
@@ -436,7 +446,7 @@ export default function FAQPage() {
               </div>
               {!isCreating && (
                 <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                  <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4" />
                     הוסף שאלה
                   </Button>
@@ -461,23 +471,25 @@ export default function FAQPage() {
         {items.length > 0 && (
           <Fade inView delay={50}>
             <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <HelpCircle className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">{items.length}</p>
                     <p className="text-xs text-muted-foreground">סה"כ שאלות</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Eye className="w-5 h-5 text-emerald-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {items.filter((i) => i.isActive).length}
                     </p>
@@ -485,12 +497,13 @@ export default function FAQPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <MousePointerClick className="w-5 h-5 text-blue-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {items.reduce((acc, i) => acc + i.clickCount, 0)}
                     </p>
@@ -505,11 +518,16 @@ export default function FAQPage() {
         {/* Create Form */}
         {isCreating && (
           <Fade inView>
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg">שאלה חדשה</CardTitle>
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-primary/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-primary" />
+                  </div>
+                  שאלה חדשה
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Label htmlFor="question">שאלה</Label>
                   <Input
@@ -563,17 +581,22 @@ export default function FAQPage() {
         {/* FAQ Items List with Drag & Drop */}
         <Fade inView delay={100}>
           {items.length === 0 && !isCreating ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                  <HelpCircle className="w-8 h-8 text-muted-foreground" />
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardContent className="py-16 text-center relative">
+                <div className="absolute top-10 right-10 w-24 h-24 rounded-full bg-primary/5 blur-2xl" />
+                <div className="absolute bottom-10 left-10 w-32 h-32 rounded-full bg-blue-500/5 blur-2xl" />
+                <div className="relative mb-6 mx-auto w-fit">
+                  <div className="absolute inset-0 w-20 h-20 bg-primary/15 rounded-2xl blur-xl animate-pulse" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center border border-primary/10 shadow-lg shadow-primary/10">
+                    <HelpCircle className="w-9 h-9 text-primary/60" />
+                  </div>
                 </div>
-                <h3 className="font-medium text-foreground mb-1">אין שאלות נפוצות עדיין</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <h3 className="font-semibold text-foreground mb-2 text-lg relative">אין שאלות נפוצות עדיין</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-[250px] mx-auto relative">
                   הוסף שאלות נפוצות כדי לעזור ללקוחות למצוא תשובות מהר יותר
                 </p>
                 <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                  <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20 relative">
                     <Plus className="w-4 h-4" />
                     הוסף שאלה ראשונה
                   </Button>

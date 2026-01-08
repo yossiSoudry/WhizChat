@@ -105,13 +105,13 @@ function SortableQuickReplyItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-xl border bg-card transition-all",
-        isDragging && "shadow-lg ring-2 ring-primary/20 z-50",
+        "group/item rounded-xl border-0 bg-card shadow-md hover:shadow-lg transition-all duration-300",
+        isDragging && "shadow-xl ring-2 ring-amber-500/30 z-50 scale-[1.02]",
         !item.isActive && "opacity-60"
       )}
     >
       {isEditing ? (
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6 space-y-4 bg-gradient-to-br from-amber-500/5 to-transparent">
           <div className="space-y-2">
             <Label>כותרת</Label>
             <Input
@@ -170,7 +170,7 @@ function SortableQuickReplyItem({
           <div className="flex items-start gap-3">
             {/* Drag Handle */}
             <button
-              className="mt-1 cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted transition-colors"
+              className="mt-1 cursor-grab active:cursor-grabbing p-1.5 rounded-lg hover:bg-muted/80 transition-colors opacity-50 group-hover/item:opacity-100"
               {...attributes}
               {...listeners}
             >
@@ -185,12 +185,12 @@ function SortableQuickReplyItem({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <h3 className="font-medium text-foreground">
+                    <h3 className="font-medium text-foreground group-hover/item:text-amber-600 dark:group-hover/item:text-amber-500 transition-colors">
                       {item.title}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
                       {item.shortcut && (
-                        <Badge variant="outline" className="font-mono text-[10px] gap-1">
+                        <Badge variant="outline" className="font-mono text-[10px] gap-1 bg-blue-500/5 border-blue-500/20 text-blue-600 dark:text-blue-400">
                           <Command className="w-2.5 h-2.5" />
                           {item.shortcut}
                         </Badge>
@@ -203,19 +203,21 @@ function SortableQuickReplyItem({
                       </Badge>
                     </div>
                   </div>
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                  )}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted/80 transition-colors">
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
               </button>
 
               {/* Expandable Content */}
               {isExpanded && (
                 <Fade inView>
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/30 p-3 rounded-lg">
                       {item.content}
                     </p>
                   </div>
@@ -224,7 +226,7 @@ function SortableQuickReplyItem({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover/item:opacity-100 transition-opacity">
               <Switch
                 checked={item.isActive}
                 onCheckedChange={onToggleActive}
@@ -233,7 +235,7 @@ function SortableQuickReplyItem({
                 variant="ghost"
                 size="icon"
                 onClick={onEdit}
-                className="h-8 w-8"
+                className="h-8 w-8 hover:bg-amber-500/10 hover:text-amber-600"
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
@@ -242,7 +244,7 @@ function SortableQuickReplyItem({
                   variant="ghost"
                   size="icon"
                   onClick={onDelete}
-                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  className="h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash className="w-4 h-4" />
                 </Button>
@@ -421,9 +423,14 @@ export default function QuickRepliesPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">טוען תשובות מהירות...</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 w-12 h-12 bg-amber-500/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+            </div>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">טוען תשובות מהירות...</span>
         </div>
       </div>
     );
@@ -443,9 +450,12 @@ export default function QuickRepliesPage() {
           {/* Header - hidden on mobile */}
           <Fade inView className="hidden md:block">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-amber-500" />
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 w-12 h-12 bg-amber-500/30 rounded-xl blur-lg" />
+                  <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold">תשובות מהירות</h1>
@@ -456,7 +466,7 @@ export default function QuickRepliesPage() {
               </div>
               {!isCreating && (
                 <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                  <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4" />
                     הוסף תשובה מהירה
                   </Button>
@@ -479,18 +489,19 @@ export default function QuickRepliesPage() {
 
         {/* Usage Tip */}
         <Fade inView delay={50}>
-          <Card className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/50">
-            <CardContent className="py-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
+          <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-amber-50/50 dark:from-amber-950/30 dark:to-amber-950/10 overflow-hidden">
+            <CardContent className="py-4 relative">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2" />
+              <div className="flex items-start gap-3 relative">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/10 flex items-center justify-center shrink-0 shadow-sm">
+                  <Lightbulb className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                  <p className="font-medium text-amber-700 dark:text-amber-400 mb-1">
+                  <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">
                     איך להשתמש?
                   </p>
                   <p className="text-sm text-amber-600 dark:text-amber-500">
-                    הקלד את הקיצור בתיבת ההודעה (למשל <code className="bg-amber-200/50 dark:bg-amber-900/50 px-1.5 py-0.5 rounded font-mono text-xs">/pricing</code>) והתשובה תוכנס אוטומטית.
+                    הקלד את הקיצור בתיבת ההודעה (למשל <code className="bg-amber-200/70 dark:bg-amber-900/50 px-2 py-0.5 rounded-md font-mono text-xs font-medium">/pricing</code>) והתשובה תוכנס אוטומטית.
                     ניתן גם לבחור תשובה מהירה מהתפריט.
                   </p>
                 </div>
@@ -503,23 +514,25 @@ export default function QuickRepliesPage() {
         {items.length > 0 && (
           <Fade inView delay={100}>
             <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Zap className="w-5 h-5 text-amber-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">{items.length}</p>
                     <p className="text-xs text-muted-foreground">סה"כ תשובות</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Eye className="w-5 h-5 text-emerald-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {items.filter((i) => i.isActive).length}
                     </p>
@@ -527,12 +540,13 @@ export default function QuickRepliesPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Card className="group border-0 shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <CardContent className="p-4 flex items-center gap-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Command className="w-5 h-5 text-blue-500" />
                   </div>
-                  <div>
+                  <div className="relative">
                     <p className="text-2xl font-bold">
                       {items.filter((i) => i.shortcut).length}
                     </p>
@@ -547,11 +561,16 @@ export default function QuickRepliesPage() {
         {/* Create Form */}
         {isCreating && (
           <Fade inView>
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg">תשובה מהירה חדשה</CardTitle>
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-amber-500/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Plus className="w-4 h-4 text-amber-500" />
+                  </div>
+                  תשובה מהירה חדשה
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Label htmlFor="title">כותרת</Label>
                   <Input
@@ -620,17 +639,22 @@ export default function QuickRepliesPage() {
         {/* Quick Replies List with Drag & Drop */}
         <Fade inView delay={150}>
           {items.length === 0 && !isCreating ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Zap className="w-8 h-8 text-muted-foreground" />
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardContent className="py-16 text-center relative">
+                <div className="absolute top-10 right-10 w-24 h-24 rounded-full bg-amber-500/5 blur-2xl" />
+                <div className="absolute bottom-10 left-10 w-32 h-32 rounded-full bg-blue-500/5 blur-2xl" />
+                <div className="relative mb-6 mx-auto w-fit">
+                  <div className="absolute inset-0 w-20 h-20 bg-amber-500/15 rounded-2xl blur-xl animate-pulse" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 flex items-center justify-center border border-amber-500/10 shadow-lg shadow-amber-500/10">
+                    <Zap className="w-9 h-9 text-amber-500/60" />
+                  </div>
                 </div>
-                <h3 className="font-medium text-foreground mb-1">אין תשובות מהירות עדיין</h3>
-                <p className="text-sm text-muted-foreground mb-4">
+                <h3 className="font-semibold text-foreground mb-2 text-lg relative">אין תשובות מהירות עדיין</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-[250px] mx-auto relative">
                   צור תשובות מוכנות מראש כדי לענות ללקוחות מהר יותר
                 </p>
                 <AnimateIcon animateOnHover asChild>
-                  <Button onClick={() => setIsCreating(true)} className="gap-2">
+                  <Button onClick={() => setIsCreating(true)} className="gap-2 shadow-lg shadow-primary/20 relative">
                     <Plus className="w-4 h-4" />
                     הוסף תשובה ראשונה
                   </Button>
