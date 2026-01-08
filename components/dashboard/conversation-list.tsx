@@ -95,14 +95,17 @@ export function ConversationList({
       {conversations.length === 0 ? (
         <Fade inView>
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-5 shadow-sm">
-              <Inbox className="w-9 h-9 text-primary/60" />
+            <div className="relative mb-6">
+              <div className="absolute inset-0 w-20 h-20 bg-primary/15 rounded-2xl blur-xl animate-pulse" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center border border-primary/10 shadow-lg shadow-primary/10">
+                <Inbox className="w-9 h-9 text-primary/60" />
+              </div>
             </div>
-            <h3 className="font-semibold text-foreground mb-1.5 text-lg">
+            <h3 className="font-semibold text-foreground mb-2 text-lg">
               אין שיחות
             </h3>
-            <p className="text-sm text-muted-foreground">
-              שיחות חדשות יופיעו כאן
+            <p className="text-sm text-muted-foreground max-w-[200px]">
+              שיחות חדשות מלקוחות יופיעו כאן
             </p>
           </div>
         </Fade>

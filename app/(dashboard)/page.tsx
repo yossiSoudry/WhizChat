@@ -622,14 +622,19 @@ function EmptyState() {
     <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
       {/* Decorative background */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 via-primary/3 to-transparent blur-3xl" />
+        <div className="w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/5 via-primary/3 to-transparent blur-3xl animate-pulse" />
       </div>
+      <div className="absolute top-20 right-20 w-32 h-32 rounded-full bg-primary/5 blur-2xl" />
+      <div className="absolute bottom-20 left-20 w-40 h-40 rounded-full bg-emerald-500/5 blur-2xl" />
 
       {/* Content */}
       <Fade inView>
         <div className="relative z-10">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 mx-auto shadow-lg shadow-primary/10">
-            <MessageSquare className="w-12 h-12 text-primary" />
+          <div className="relative mb-8 mx-auto">
+            <div className="absolute inset-0 w-24 h-24 bg-primary/20 rounded-3xl blur-xl animate-pulse" />
+            <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-xl shadow-primary/15 border border-primary/10">
+              <MessageSquare className="w-12 h-12 text-primary" />
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-3">
             בחר שיחה להצגה
@@ -639,10 +644,10 @@ function EmptyState() {
           </p>
 
           {/* Status indicator */}
-          <div className="mt-10 inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-card border border-border shadow-sm">
+          <div className="mt-10 inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-card/80 backdrop-blur-sm border border-border shadow-lg">
             <span className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-lg shadow-emerald-500/50" />
             </span>
             <span className="text-sm font-medium text-foreground">מחובר ופעיל</span>
             <span className="text-xs text-muted-foreground">• מוכן לקבל שיחות</span>

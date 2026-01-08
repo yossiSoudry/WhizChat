@@ -128,7 +128,15 @@ export default function AccountPage() {
   if (!agent) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 w-12 h-12 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">טוען חשבון...</span>
+        </div>
       </div>
     );
   }
@@ -145,9 +153,12 @@ export default function AccountPage() {
         <div className="max-w-2xl mx-auto p-6 space-y-6">
           {/* Header - hidden on mobile */}
           <Fade inView className="hidden md:block">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <User className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="absolute inset-0 w-12 h-12 bg-primary/30 rounded-xl blur-lg" />
+                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                  <User className="w-6 h-6 text-primary-foreground" />
+                </div>
               </div>
               <div>
                 <h1 className="text-2xl font-bold">הגדרות חשבון</h1>
@@ -162,12 +173,21 @@ export default function AccountPage() {
           {message && (
             <Fade inView>
               <div
-                className={`p-3 rounded-lg text-sm ${
+                className={`p-4 rounded-xl text-sm font-medium flex items-center gap-3 shadow-sm ${
                   message.type === "success"
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
-                    : "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                    : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200 dark:border-red-800"
                 }`}
               >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  message.type === "success" ? "bg-emerald-100 dark:bg-emerald-900/50" : "bg-red-100 dark:bg-red-900/50"
+                }`}>
+                  {message.type === "success" ? (
+                    <Save className="w-4 h-4" />
+                  ) : (
+                    <Lock className="w-4 h-4" />
+                  )}
+                </div>
                 {message.text}
               </div>
             </Fade>
@@ -175,15 +195,17 @@ export default function AccountPage() {
 
           {/* Profile Card */}
           <Fade inView delay={50}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <User className="w-5 h-5" />
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-primary/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
                   פרטים אישיים
                 </CardTitle>
                 <CardDescription>עדכן את השם והתמונה שלך</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 pt-6">
                 {/* Avatar */}
                 <div className="flex justify-center">
                   <AvatarUpload
@@ -257,7 +279,7 @@ export default function AccountPage() {
                 <Button
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="w-full gap-2"
+                  className="w-full gap-2 shadow-lg shadow-primary/20"
                 >
                   {isSaving ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -272,18 +294,20 @@ export default function AccountPage() {
 
           {/* Notifications Card */}
           <Fade inView delay={100}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Bell className="w-5 h-5" />
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-emerald-500/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <Bell className="w-4 h-4 text-emerald-500" />
+                  </div>
                   התראות
                 </CardTitle>
                 <CardDescription>הגדר את העדפות ההתראות שלך</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
+              <CardContent className="space-y-4 pt-6">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                   <div className="space-y-0.5">
-                    <Label>התראות WhatsApp</Label>
+                    <Label className="font-medium">התראות WhatsApp</Label>
                     <p className="text-sm text-muted-foreground">
                       קבל התראה בוואטסאפ כשמגיעה הודעה חדשה
                     </p>
@@ -297,9 +321,12 @@ export default function AccountPage() {
                   />
                 </div>
                 {!formData.phone && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    יש להזין מספר טלפון כדי לקבל התראות WhatsApp
-                  </p>
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      יש להזין מספר טלפון כדי לקבל התראות WhatsApp
+                    </p>
+                  </div>
                 )}
 
                 <Button
@@ -321,15 +348,17 @@ export default function AccountPage() {
 
           {/* Password Card */}
           <Fade inView delay={150}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Lock className="w-5 h-5" />
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-l from-amber-500/5 to-transparent">
+                <CardTitle className="text-lg flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <Lock className="w-4 h-4 text-amber-500" />
+                  </div>
                   שינוי סיסמה
                 </CardTitle>
                 <CardDescription>עדכן את הסיסמה שלך</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">סיסמה נוכחית</Label>
                   <PasswordInput
