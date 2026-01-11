@@ -79,7 +79,7 @@ export function ChatWidgetRealtime({
   const [existingGuestName, setExistingGuestName] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -774,7 +774,7 @@ export function ChatWidgetRealtime({
           border-top: 1px solid var(--wc-border);
           background: var(--wc-bg);
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           gap: 10px;
         }
 
@@ -784,12 +784,25 @@ export function ChatWidgetRealtime({
           width: 100%;
           padding: 12px 16px;
           border: 1px solid var(--wc-border);
-          border-radius: 24px;
+          border-radius: 20px;
           font-size: 14px;
           outline: none;
-          transition: all 0.2s ease;
+          transition: all 0.2s ease, height 0.15s ease;
           background: var(--wc-bg-secondary);
           color: var(--wc-text);
+          resize: none;
+          min-height: 44px;
+          max-height: 120px;
+          overflow: hidden;
+          overflow-y: auto;
+          line-height: 1.4;
+          font-family: inherit;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .wc-input::-webkit-scrollbar {
+          display: none;
         }
 
         .wc-input:focus {
@@ -1219,19 +1232,35 @@ export function ChatWidgetRealtime({
           {/* Input Area */}
           <div className="wc-input-area">
             <div className="wc-input-wrapper">
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
                 className="wc-input"
                 placeholder="Enter your message..."
                 value={inputValue}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    sendMessage(inputValue);
+                onChange={(e) => {
+                  handleInputChange(e.target.value);
+                  // Auto-resize textarea
+                  const textarea = e.target;
+                  textarea.style.height = 'auto';
+                  const scrollHeight = textarea.scrollHeight;
+                  const newHeight = Math.max(44, Math.min(scrollHeight, 120));
+                  textarea.style.height = newHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (inputValue.trim() && !isSending) {
+                      sendMessage(inputValue);
+                      // Reset height after sending
+                      if (inputRef.current) {
+                        inputRef.current.style.height = '44px';
+                      }
+                    }
                   }
                 }}
                 disabled={isSending}
+                rows={1}
+                style={{ height: '44px' }}
               />
             </div>
             <button

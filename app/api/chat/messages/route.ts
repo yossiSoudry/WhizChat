@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
         replyToSender: true,
         replyToMessageType: true,
         replyToFileUrl: true,
+        isEdited: true,
+        editedAt: true,
       },
     });
 

@@ -172,6 +172,10 @@ model Message {
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
 
+  // Edit tracking
+  isEdited  Boolean   @default(false) @map("is_edited")
+  editedAt  DateTime? @map("edited_at")
+
   // Relations
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 

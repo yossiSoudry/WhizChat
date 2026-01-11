@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Reply,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -121,6 +122,8 @@ interface Message {
   replyToSender?: string | null;
   replyToMessageType?: "text" | "image" | "file" | "audio" | "video" | null;
   replyToFileUrl?: string | null;
+  isEdited?: boolean;
+  editedAt?: string | null;
 }
 
 interface ConversationDetails {
@@ -247,8 +250,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
   const [showProfileDrawer, setShowProfileDrawer] = useState(false);
   const [customerNotes, setCustomerNotes] = useState<CustomerNote[]>([]);
   const [customerMedia, setCustomerMedia] = useState<MediaItem[]>([]);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageSearchInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -664,6 +670,54 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
       console.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  // Start editing a message
+  function startEditMessage(message: Message) {
+    setEditingMessage(message);
+    setEditContent(message.content);
+  }
+
+  // Cancel editing
+  function cancelEditMessage() {
+    setEditingMessage(null);
+    setEditContent("");
+  }
+
+  // Save edited message
+  async function saveEditMessage() {
+    if (!editingMessage || !editContent.trim() || isEditing) return;
+    if (editContent.trim() === editingMessage.content) {
+      cancelEditMessage();
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const res = await fetch(`/api/admin/messages/${editingMessage.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editContent.trim() }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update message in local state
+        setMessages(messages.map(msg =>
+          msg.id === editingMessage.id
+            ? { ...msg, content: data.message.content, isEdited: true, editedAt: data.message.editedAt }
+            : msg
+        ));
+        cancelEditMessage();
+      } else {
+        const errorData = await res.json();
+        console.error("Failed to edit message:", errorData.error);
+      }
+    } catch (error) {
+      console.error("Failed to edit message:", error);
+    } finally {
+      setIsEditing(false);
     }
   }
 
@@ -1169,11 +1223,19 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                             isAgent && "bg-brand-gradient text-white rounded-tr-md shadow-md shadow-primary/20",
                             isCustomer && "bg-card border border-border/80 rounded-tl-md shadow-sm hover:shadow-md transition-shadow",
                             isSystem && "bg-gradient-to-r from-muted/80 to-muted/60 text-muted-foreground text-center text-sm px-5 py-2.5 rounded-xl border border-border/50",
+                            // Different style for other agent's messages
+                            isAgent && message.senderId !== agent?.id && "bg-gradient-to-br from-slate-600 to-slate-700",
                             // Highlight search results
                             isCurrentSearchResult && "ring-2 ring-yellow-400 ring-offset-2",
                             isSearchResult && !isCurrentSearchResult && "ring-1 ring-yellow-300/50"
                           )}
                         >
+                          {/* Show other agent's name */}
+                          {isAgent && message.senderId !== agent?.id && message.senderName && (
+                            <div className="text-[11px] text-white/70 font-medium mb-1">
+                              {message.senderName}
+                            </div>
+                          )}
                           {/* Reply preview */}
                           {message.replyToId && (message.replyToContent || message.replyToFileUrl) && (
                             <div
@@ -1242,6 +1304,56 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                               localPreviewUrl={message.localPreviewUrl}
                               caption={message.content}
                             />
+                          ) : editingMessage?.id === message.id ? (
+                            /* Edit mode UI */
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className={cn(
+                                  "w-full p-2 rounded-lg text-[15px] leading-relaxed resize-none border-0 focus:ring-2 focus:ring-primary/50 outline-none",
+                                  isAgent
+                                    ? "bg-white/20 text-white placeholder:text-white/50"
+                                    : "bg-muted text-foreground"
+                                )}
+                                rows={Math.min(editContent.split('\n').length + 1, 6)}
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    saveEditMessage();
+                                  }
+                                  if (e.key === 'Escape') {
+                                    cancelEditMessage();
+                                  }
+                                }}
+                              />
+                              <div className="flex items-center gap-2 justify-end">
+                                <button
+                                  onClick={cancelEditMessage}
+                                  className={cn(
+                                    "text-xs px-2 py-1 rounded-md transition-colors",
+                                    isAgent
+                                      ? "text-white/70 hover:text-white hover:bg-white/10"
+                                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  )}
+                                >
+                                  ביטול
+                                </button>
+                                <button
+                                  onClick={saveEditMessage}
+                                  disabled={isEditing || !editContent.trim()}
+                                  className={cn(
+                                    "text-xs px-3 py-1 rounded-md font-medium transition-colors disabled:opacity-50",
+                                    isAgent
+                                      ? "bg-white/20 text-white hover:bg-white/30"
+                                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                                  )}
+                                >
+                                  {isEditing ? "שומר..." : "שמור"}
+                                </button>
+                              </div>
+                            </div>
                           ) : (
                             <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
                               {isSearchResult ? highlightSearchText(message.content) : message.content}
@@ -1257,6 +1369,11 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                               isAgent ? "justify-start" : "justify-end"
                             )}
                           >
+                            {message.isEdited && (
+                              <span className="text-[10px] text-muted-foreground/70 italic">
+                                נערך
+                              </span>
+                            )}
                             <span className="text-[11px] text-muted-foreground">
                               {formatTime(message.createdAt)}
                             </span>
@@ -1271,26 +1388,49 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                         )}
                       </div>
 
-                      {/* Reply button - shows on hover */}
+                      {/* Action buttons - shows on hover */}
                       {!isSystem && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="h-7 w-7 rounded-md flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity duration-200 hover:bg-muted text-muted-foreground hover:text-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setReplyingTo(message);
-                                inputRef.current?.focus();
-                              }}
-                            >
-                              <Reply className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side={isAgent ? "right" : "left"}>
-                            הגב להודעה
-                          </TooltipContent>
-                        </Tooltip>
+                        <div className="flex flex-col gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-200">
+                          {/* Edit button - only for own agent text messages */}
+                          {isAgent && message.senderType === "agent" && message.senderId === agent?.id && message.messageType === "text" && !editingMessage && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEditMessage(message);
+                                  }}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="right">
+                                ערוך הודעה
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Reply button */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReplyingTo(message);
+                                  inputRef.current?.focus();
+                                }}
+                              >
+                                <Reply className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side={isAgent ? "right" : "left"}>
+                              הגב להודעה
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                       )}
                     </div>
                   );
@@ -1405,7 +1545,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 </Button>
               </div>
             )}
-            <div className="relative flex items-center bg-card/95 backdrop-blur-sm border border-border/80 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30">
+            <div className="relative flex items-end bg-card/95 backdrop-blur-sm border border-border/80 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30">
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
@@ -1414,7 +1554,7 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.json,.zip,.rar,audio/*,video/*"
                 onChange={handleFileSelect}
               />
-              <div className="flex items-center gap-1 pr-3">
+              <div className="flex items-center gap-1 pr-3 pb-3">
                 <AnimateIcon animateOnHover asChild>
                   <Button
                     type="button"
@@ -1458,16 +1598,33 @@ export function ChatView({ conversationId, onClose, onStatusChange, onRead, show
                   )}
                 </div>
               </div>
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
                 value={newMessage}
-                onChange={(e) => handleInputChange(e.target.value)}
+                onChange={(e) => {
+                  handleInputChange(e.target.value);
+                  // Auto-resize textarea
+                  const textarea = e.target;
+                  textarea.style.height = '56px';
+                  const newHeight = Math.min(textarea.scrollHeight, 150);
+                  textarea.style.height = newHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (newMessage.trim() && !isSending) {
+                      const form = e.currentTarget.closest('form');
+                      if (form) form.requestSubmit();
+                    }
+                  }
+                }}
                 placeholder="הקלד הודעה..."
-                className="flex-1 h-14 bg-transparent !border-0 !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!border-0 focus:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 text-[15px] px-0 placeholder:text-muted-foreground"
+                className="flex-1 min-h-[56px] max-h-[150px] py-4 bg-transparent !border-0 !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus:!border-0 focus:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 text-[15px] px-0 placeholder:text-muted-foreground resize-none overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
                 disabled={isSending}
+                rows={1}
+                style={{ height: '56px' }}
               />
-              <div className="pl-2 pr-2">
+              <div className="pl-2 pr-2 pb-2">
                 <AnimateIcon animateOnHover asChild>
                   <Button
                     type="submit"

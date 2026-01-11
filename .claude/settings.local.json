@@ -35,7 +35,8 @@
       "Bash(timeout:*)",
       "Skill(frontend-design)",
       "Skill(frontend-design:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npx prisma db push --force-reset)"
     ]
   }
 }
