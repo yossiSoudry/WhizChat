@@ -953,7 +953,7 @@
         background: #f0f2f5;
       }
 
-      /* Input field - seamless inside container */
+      /* Input field (textarea) - seamless inside container */
       .whizchat-input {
         flex: 1;
         border: none !important;
@@ -966,6 +966,17 @@
         line-height: 1.35;
         color: #1f2937 !important;
         -webkit-text-fill-color: #1f2937 !important;
+        resize: none;
+        min-height: 24px;
+        max-height: 120px;
+        overflow-y: auto;
+        font-family: inherit;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .whizchat-input::-webkit-scrollbar {
+        display: none;
       }
 
       .whizchat-input::placeholder {
@@ -2061,7 +2072,7 @@
                 <line x1="15" y1="9" x2="15.01" y2="9"/>
               </svg>
             </button>
-            <input type="text" class="whizchat-input" id="whizchat-input" placeholder="Message" />
+            <textarea class="whizchat-input" id="whizchat-input" placeholder="Message" rows="1"></textarea>
             <button class="whizchat-action-btn" id="whizchat-attach" title="Attach media">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -2716,7 +2727,9 @@
 
     state.messages.push(tempMessage);
     state.isSending = true;
-    document.getElementById('whizchat-input').value = '';
+    var inputEl = document.getElementById('whizchat-input');
+    inputEl.value = '';
+    inputEl.style.height = '24px'; // Reset textarea height
     cancelReply(); // Clear reply state
 
     // Show intro form after first message for anonymous users
@@ -2903,16 +2916,25 @@
     document.getElementById('whizchat-send').onclick = function() {
       var input = document.getElementById('whizchat-input');
       sendMessage(input.value);
+      input.style.height = '24px'; // Reset height after sending
     };
 
-    document.getElementById('whizchat-input').onkeypress = function(e) {
-      if (e.key === 'Enter') {
+    // Handle Enter (send) and Shift+Enter (new line)
+    document.getElementById('whizchat-input').onkeydown = function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
         sendMessage(this.value);
+        this.style.height = '24px'; // Reset height after sending
       }
     };
 
-    // Typing indicator - send typing status when user types
+    // Typing indicator and auto-resize textarea
     document.getElementById('whizchat-input').oninput = function() {
+      // Auto-resize textarea
+      this.style.height = 'auto';
+      var newHeight = Math.max(24, Math.min(this.scrollHeight, 120));
+      this.style.height = newHeight + 'px';
+
       if (this.value.length > 0) {
         sendTypingStatus(true);
         // Clear existing timeout
