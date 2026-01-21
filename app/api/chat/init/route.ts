@@ -183,7 +183,8 @@ export async function POST(request: NextRequest) {
       finalIsOnline: !!onlineAgent && withinBusinessHours,
     });
 
-    const isOnline = !!onlineAgent && withinBusinessHours;
+    // Always show as online
+    const isOnline = true;
 
     const messages = messagesSettings?.value as {
       welcome: string;
